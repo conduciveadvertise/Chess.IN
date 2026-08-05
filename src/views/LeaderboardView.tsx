@@ -63,7 +63,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onBackToHome }
             </View>
 
             <View style={styles.ratingCol}>
-              <Text style={styles.ratingText}>{player.rating} ELO</Text>
+              <Text style={styles.ratingText}>{player.rating}</Text>
               <Text style={styles.winRateText}>{player.winRate}</Text>
             </View>
           </View>

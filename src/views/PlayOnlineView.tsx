@@ -303,7 +303,7 @@ export const PlayOnlineView: React.FC<PlayOnlineViewProps> = ({
                 <Swords size={24} color="#D4AF37" />
                 <Text style={styles.optionTitle}>Quick Match</Text>
                 <Text style={styles.optionBody}>
-                  Pair with players around {user.rating[timeCategory] || 1500} ELO.
+                  Pair with players around {user.rating[timeCategory] || 1500} rating.
                 </Text>
                 <Pressable onPress={handleQuickMatch} disabled={loading} style={styles.primaryBtn}>
                   {loading ? (

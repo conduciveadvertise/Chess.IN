@@ -1,8 +1,18 @@
 export type GameMode = "vs_ai" | "online" | "pass_and_play" | "puzzle" | "analysis" | "learn" | "ai_vs_ai" | "tournaments";
 
-export type PieceTheme = "neo_staunton" | "royal_gold" | "minimalist";
+export type PieceTheme =
+  | "neo_staunton"
+  | "merida"
+  | "alpha"
+  | "california"
+  | "leipzig"
+  | "chessnut"
+  | "maestro"
+  | "cburnett"
+  | "pirouetti"
+  | "staunty";
 
-export type BoardTheme = "gold" | "emerald" | "marble" | "cyber";
+export type BoardTheme = "slate" | "gold" | "emerald" | "marble" | "cyber";
 
 export type AiDifficulty = "beginner" | "easy" | "medium" | "hard" | "expert" | "grandmaster";
 

@@ -303,7 +303,7 @@ export const SocialHubModal: React.FC<SocialHubModalProps> = ({ isOpen, onClose,
                         <View>
                           <Text style={styles.userName}>{req.sender_profile?.display_name}</Text>
                           <Text style={styles.userStatus}>
-                            {req.sender_profile?.rating} ELO
+                            {req.sender_profile?.rating}
                           </Text>
                         </View>
                       </View>
@@ -391,7 +391,7 @@ export const SocialHubModal: React.FC<SocialHubModalProps> = ({ isOpen, onClose,
                       <View>
                         <Text style={styles.userName}>{player.display_name}</Text>
                         <Text style={styles.userStatus}>
-                          {player.rating} ELO • {player.country}
+                          Rating: {player.rating} • {player.country}
                         </Text>
                       </View>
                     </View>

@@ -53,6 +53,9 @@ interface GameState {
   // Captured Pieces
   capturedPieces: CapturedPiecesState;
 
+  // Game ID for instance reset tracking
+  gameId: number;
+
   // Database ID if saved
   dbGameId: string | null;
 
@@ -65,7 +68,7 @@ interface GameState {
     initialFen?: string;
   }) => void;
   makeMove: (from: string, to: string, promotion?: string) => boolean;
-  makeAiMove: () => void;
+  makeAiMove: () => Promise<void>;
   undoMove: () => boolean;
   jumpToMove: (index: number) => void;
   flipBoard: () => void;
@@ -120,9 +123,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   winReason: null,
 
   capturedPieces: { w: [], b: [] },
+  gameId: Date.now(),
   dbGameId: null,
 
   initGame: (config) => {
+    // Abort any pending AI search tasks
+    StockfishEngine.cancelSearch();
+
     const game = new Chess(config?.initialFen);
     const mode = config?.mode || "vs_ai";
     const aiLevel = config?.aiLevel || 1;
@@ -158,8 +165,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       winner: null,
       winReason: null,
       capturedPieces: { w: [], b: [] },
+      gameId: Date.now(),
       dbGameId: null,
     });
+
+    // If player selected Black in VS AI mode, trigger AI move for White
+    if (mode === "vs_ai" && playerColor === "b") {
+      setTimeout(() => {
+        get().makeAiMove();
+      }, 300);
+    }
   },
 
   makeMove: (from: string, to: string, promotion = "q") => {
@@ -268,17 +283,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  makeAiMove: () => {
+  makeAiMove: async () => {
     const { chess, aiLevel } = get();
     if (chess.isGameOver()) return;
 
-    const bestMove = StockfishEngine.getBestMove(chess, aiLevel);
+    const bestMove = await StockfishEngine.getBestMoveAsync(chess, aiLevel);
     if (bestMove) {
       get().makeMove(bestMove.from, bestMove.to, bestMove.promotion);
     }
   },
 
   undoMove: () => {
+    StockfishEngine.cancelSearch();
     const { chess, gameMode, history } = get();
     if (history.length === 0) return false;
 

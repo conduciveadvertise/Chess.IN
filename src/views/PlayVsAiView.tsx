@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   Pressable,
   ScrollView,
   StyleSheet,
+  Modal,
 } from "react-native";
 import { StockfishEngine } from "../services/engine";
 import { soundManager } from "../services/sound";
@@ -13,30 +14,25 @@ import { Clock } from "../components/Clock";
 import { EvalBar } from "../components/EvalBar";
 import { CapturedPieces } from "../components/CapturedPieces";
 import { MoveHistory } from "../components/MoveHistory";
-import { AiCoachPanel } from "../components/AiCoachPanel";
-import { GameAnalysisModal } from "../components/GameAnalysisModal";
-import { GameSettings, UserProfile } from "../types/chess";
+import { GameSettings } from "../types/chess";
 import { useGameStore } from "../services/gameStore";
 import {
   Bot,
   RotateCcw,
-  Flag,
-  BarChart3,
+  RefreshCw,
   ChevronLeft,
-  Lightbulb,
-  Bookmark,
-  Check,
-  Copy,
+  Trophy,
 } from "lucide-react-native";
 
 interface PlayVsAiViewProps {
-  user: UserProfile;
+  initialLevel?: number;
   settings: GameSettings;
   onBackToHome: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
-  user,
+  initialLevel = 1,
   settings,
   onBackToHome,
 }) => {
@@ -45,36 +41,52 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
     fen,
     history,
     evalScore,
-    opening,
     aiLevel,
     playerColor,
     isFlipped,
     capturedPieces,
     isGameOver,
     winner,
-    winReason,
+    gameId,
     initGame,
     makeMove,
     undoMove,
     flipBoard,
-    requestHint,
-    resign,
-    exportPgn,
-    saveGameToDb,
   } = useGameStore();
 
-  const [selectedLevel, setSelectedLevel] = useState<number>(10);
+  const [selectedLevel, setSelectedLevel] = useState<number>(initialLevel);
   const [selectedColor, setSelectedColor] = useState<"w" | "b">("w");
   const [selectedTimeSec, setSelectedTimeSec] = useState<number>(600);
-  const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
-  const [showAnalysisModal, setShowAnalysisModal] = useState<boolean>(false);
-  const [isSaved, setIsSaved] = useState<boolean>(false);
-  const [copiedPgn, setCopiedPgn] = useState<boolean>(false);
+  const [isGameStarted, setIsGameStarted] = useState<boolean>(true);
+  const [showNewGameModal, setShowNewGameModal] = useState<boolean>(false);
 
-  const handleStartGame = () => {
+  useEffect(() => {
+    if (initialLevel) {
+      setSelectedLevel(initialLevel);
+    }
+    // Auto initialize game on view mount
+    handleStartGame(initialLevel || selectedLevel);
+  }, [initialLevel]);
+
+  // Handle Level Unlocking on Victory
+  useEffect(() => {
+    if (isGameOver && winner === playerColor) {
+      try {
+        const nextLevel = Math.min(20, aiLevel + 1);
+        const currentMax = parseInt(localStorage.getItem("chess_in_max_unlocked_level") || "1", 10);
+        if (nextLevel > currentMax) {
+          localStorage.setItem("chess_in_max_unlocked_level", String(nextLevel));
+        }
+      } catch (e) {
+        // ignore storage error
+      }
+    }
+  }, [isGameOver, winner, playerColor, aiLevel]);
+
+  const handleStartGame = (lvl: number = selectedLevel) => {
     initGame({
       mode: "vs_ai",
-      aiLevel: selectedLevel,
+      aiLevel: lvl,
       playerColor: selectedColor,
       timeControl: {
         name: `${selectedTimeSec / 60}m`,
@@ -84,7 +96,6 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
       },
     });
     setIsGameStarted(true);
-    setIsSaved(false);
     soundManager.playGameStart();
   };
 
@@ -96,53 +107,57 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
     }
   };
 
-  const handleSaveGame = async () => {
-    if (!user.id) return;
-    const ok = await saveGameToDb(user.id, `Vs Stockfish Level ${aiLevel}`);
-    if (ok) {
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 2500);
-    }
+  const handleContinueNextLevel = () => {
+    const nextLvl = Math.min(20, aiLevel + 1);
+    setSelectedLevel(nextLvl);
+    handleStartGame(nextLvl);
   };
+
+  const handleRetryCurrentLevel = () => {
+    handleStartGame(aiLevel);
+  };
+
+  const isPlayerWinner = isGameOver && winner === playerColor;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Top Header */}
       <View style={styles.topHeader}>
-        <Pressable onPress={onBackToHome} style={styles.exitBtn}>
-          <ChevronLeft size={16} color="#E4E4E7" />
-          <Text style={styles.exitBtnText}>Exit Arena</Text>
+        <Pressable onPress={onBackToHome} style={styles.headerBtn}>
+          <ChevronLeft size={18} color="#E4E4E7" />
+          <Text style={styles.headerBtnText}>Home</Text>
         </Pressable>
 
-        <View style={styles.levelBadge}>
-          <Bot size={14} color="#D4AF37" />
-          <Text style={styles.levelBadgeText}>
-            Stockfish 17 (Lvl {aiLevel} / ~{StockfishEngine.getLevelConfig(aiLevel).elo} ELO)
+        <View style={styles.headerTitleBox}>
+          <Bot size={16} color="#D4AF37" />
+          <Text style={styles.headerTitleText}>
+            Stockfish Level {aiLevel}
           </Text>
         </View>
+
+        <View style={{ width: 60 }} />
       </View>
 
       {!isGameStarted ? (
         /* Setup Screen */
         <View style={styles.setupCard}>
-          <Text style={styles.setupTitle}>Stockfish 17 Arena</Text>
-          <Text style={styles.setupSub}>Configure match parameters</Text>
+          <Text style={styles.setupTitle}>Play Computer</Text>
+          <Text style={styles.setupSub}>Select match parameters</Text>
 
-          {/* Level selector buttons */}
-          <View>
+          {/* Level Selector */}
+          <View style={styles.setupSection}>
             <Text style={styles.label}>
-              ENGINE LEVEL: {selectedLevel} (~
-              {StockfishEngine.getLevelConfig(selectedLevel).elo} ELO)
+              DIFFICULTY: Level {selectedLevel}
             </Text>
-            <View style={styles.levelRow}>
+            <View style={styles.chipRow}>
               {[1, 5, 10, 15, 20].map((lvl) => (
                 <Pressable
                   key={lvl}
                   onPress={() => setSelectedLevel(lvl)}
-                  style={[styles.levelBtn, selectedLevel === lvl && styles.activeLevelBtn]}
+                  style={[styles.chip, selectedLevel === lvl && styles.chipActive]}
                 >
                   <Text
-                    style={[styles.levelBtnText, selectedLevel === lvl && styles.activeLevelBtnText]}
+                    style={[styles.chipText, selectedLevel === lvl && styles.chipTextActive]}
                   >
                     Lvl {lvl}
                   </Text>
@@ -151,45 +166,46 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
             </View>
           </View>
 
-          {/* Color Selection */}
-          <View>
+          {/* Side Selector */}
+          <View style={styles.setupSection}>
             <Text style={styles.label}>SIDE</Text>
-            <View style={styles.grid2}>
-              <Pressable
-                onPress={() => setSelectedColor("w")}
-                style={[styles.optionBtn, selectedColor === "w" && styles.activeOptionBtn]}
-              >
-                <Text style={[styles.optionText, selectedColor === "w" && styles.activeOptionText]}>
-                  White
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setSelectedColor("b")}
-                style={[styles.optionBtn, selectedColor === "b" && styles.activeOptionBtn]}
-              >
-                <Text style={[styles.optionText, selectedColor === "b" && styles.activeOptionText]}>
-                  Black
-                </Text>
-              </Pressable>
+            <View style={styles.chipRow}>
+              {[
+                { id: "w", label: "White" },
+                { id: "b", label: "Black" },
+              ].map((s) => (
+                <Pressable
+                  key={s.id}
+                  onPress={() => setSelectedColor(s.id as any)}
+                  style={[styles.chipFlex, selectedColor === s.id && styles.chipActive]}
+                >
+                  <Text
+                    style={[styles.chipText, selectedColor === s.id && styles.chipTextActive]}
+                  >
+                    {s.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           </View>
 
           {/* Time Control */}
-          <View>
+          <View style={styles.setupSection}>
             <Text style={styles.label}>TIME CONTROL</Text>
-            <View style={styles.grid3}>
+            <View style={styles.chipRow}>
               {[
-                { label: "3m Bullet", val: 180 },
-                { label: "5m Blitz", val: 300 },
-                { label: "10m Rapid", val: 600 },
+                { label: "3m", val: 180 },
+                { label: "5m", val: 300 },
+                { label: "10m", val: 600 },
               ].map((tc) => (
                 <Pressable
                   key={tc.val}
                   onPress={() => setSelectedTimeSec(tc.val)}
-                  style={[styles.optionBtn, selectedTimeSec === tc.val && styles.activeOptionBtn]}
+                  style={[styles.chipFlex, selectedTimeSec === tc.val && styles.chipActive]}
                 >
-                  <Text style={[styles.optionText, selectedTimeSec === tc.val && styles.activeOptionText]}>
+                  <Text
+                    style={[styles.chipText, selectedTimeSec === tc.val && styles.chipTextActive]}
+                  >
                     {tc.label}
                   </Text>
                 </Pressable>
@@ -197,43 +213,26 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
             </View>
           </View>
 
-          <Pressable onPress={handleStartGame} style={styles.startBtn}>
+          <Pressable onPress={() => handleStartGame(selectedLevel)} style={styles.startBtn}>
             <Text style={styles.startBtnText}>Start Match</Text>
           </Pressable>
         </View>
       ) : (
-        /* Active Game Layout */
-        <View style={styles.gameLayout}>
-          {/* Opening info */}
-          <View style={styles.openingRow}>
-            <Text style={styles.openingText}>
-              {opening.eco} — {opening.name}
-            </Text>
-            <View style={styles.openingActions}>
-              <Pressable onPress={requestHint} style={styles.hintBtn}>
-                <Lightbulb size={12} color="#D4AF37" />
-                <Text style={styles.hintBtnText}>Hint</Text>
-              </Pressable>
-              <Pressable onPress={handleSaveGame} style={styles.saveBtn}>
-                <Bookmark size={12} color="#E4E4E7" />
-                <Text style={styles.saveBtnText}>{isSaved ? "Saved" : "Save"}</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Bot Clock */}
+        /* Active Game Screen */
+        <View style={styles.gameLayout} key={`game_layout_${gameId}`}>
+          {/* Top Opponent Clock */}
           <Clock
+            key={`opp_clock_${gameId}`}
             initialTime={selectedTimeSec}
             isActive={chess.turn() !== playerColor && !isGameOver}
             onTimeOut={() => {}}
             playerColor={playerColor === "w" ? "b" : "w"}
             playerName={`Stockfish Lvl ${aiLevel}`}
-            playerTitle="ENGINE"
-            playerRating={StockfishEngine.getLevelConfig(aiLevel).elo}
-            avatar="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80"
+            playerTitle="BOT"
           />
 
           <CapturedPieces
+            key={`captured_${gameId}`}
             captured={[
               ...capturedPieces.w.map((p) => ({ type: p as any, color: "w" as const })),
               ...capturedPieces.b.map((p) => ({ type: p as any, color: "b" as const })),
@@ -241,15 +240,17 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
             pieceTheme={settings.pieceTheme}
           />
 
-          {/* Board */}
+          {/* Large Centered Chessboard with Luxury Atmosphere Background */}
           <View style={styles.boardWrap}>
             {settings.showEvalBar && (
-              <View style={{ height: 320 }}>
+              <View style={styles.evalBarBox}>
                 <EvalBar score={evalScore} orientation={isFlipped ? "b" : "w"} />
               </View>
             )}
             <ChessBoard
+              key={`board_${gameId}`}
               chess={chess}
+              fen={fen}
               boardTheme={settings.boardTheme}
               pieceTheme={settings.pieceTheme}
               orientation={isFlipped ? "b" : "w"}
@@ -266,66 +267,122 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
 
           {/* Player Clock */}
           <Clock
+            key={`player_clock_${gameId}`}
             initialTime={selectedTimeSec}
             isActive={chess.turn() === playerColor && !isGameOver}
             onTimeOut={() => {}}
             playerColor={playerColor}
-            playerName={user.name}
-            playerTitle={user.title}
-            playerRating={user.rating.rapid}
-            avatar={user.avatar}
+            playerName="Player"
           />
 
-          {/* Controls */}
-          <View style={styles.actionRow}>
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              <Pressable onPress={undoMove} disabled={history.length === 0} style={styles.controlBtn}>
-                <RotateCcw size={14} color="#E4E4E7" />
-                <Text style={styles.controlBtnText}>Undo</Text>
-              </Pressable>
-              <Pressable onPress={flipBoard} style={styles.controlBtn}>
-                <Text style={styles.controlBtnText}>Flip</Text>
-              </Pressable>
-            </View>
+          {/* Action Bar: Keep ONLY Undo and New Game */}
+          <View style={styles.actionBar}>
+            <Pressable
+              onPress={undoMove}
+              disabled={history.length === 0}
+              style={[styles.actionBtn, history.length === 0 && styles.actionBtnDisabled]}
+            >
+              <RotateCcw size={18} color="#FFFFFF" />
+              <Text style={styles.actionBtnText}>Undo</Text>
+            </Pressable>
 
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              <Pressable onPress={() => resign(playerColor)} disabled={isGameOver} style={styles.resignBtn}>
-                <Flag size={14} color="#FDA4AF" />
-                <Text style={styles.resignBtnText}>Resign</Text>
-              </Pressable>
-              {isGameOver && (
-                <Pressable onPress={() => setShowAnalysisModal(true)} style={styles.analysisBtn}>
-                  <BarChart3 size={14} color="#000" />
-                  <Text style={styles.analysisBtnText}>Analysis</Text>
-                </Pressable>
-              )}
-            </View>
+            <Pressable onPress={() => setShowNewGameModal(true)} style={styles.actionBtn}>
+              <RefreshCw size={18} color="#D4AF37" />
+              <Text style={styles.actionBtnText}>New Game</Text>
+            </Pressable>
           </View>
 
-          {/* History & Coach */}
+          {/* Move History */}
           <MoveHistory history={history.map((m) => m.san)} onUndo={undoMove} onFlipBoard={flipBoard} />
-          <AiCoachPanel
-            fen={fen}
-            lastMoveSan={history.length > 0 ? history[history.length - 1].san : ""}
-            pgn={exportPgn()}
-            evalScore={evalScore}
-            difficulty={aiLevel >= 15 ? "grandmaster" : aiLevel >= 10 ? "hard" : aiLevel >= 5 ? "medium" : "easy"}
-          />
         </View>
       )}
 
-      {showAnalysisModal && (
-        <GameAnalysisModal
-          pgn={exportPgn()}
-          resultText={
-            winner === "draw" ? "Game Drawn" : `${winner === "w" ? "White" : "Black"} Won by ${winReason}`
-          }
-          movesCount={history.length}
-          playerColor={playerColor === "w" ? "White" : "Black"}
-          onClose={() => setShowAnalysisModal(false)}
-          onRematch={handleStartGame}
-        />
-      )}
+      {/* New Game Confirmation Modal */}
+      <Modal visible={showNewGameModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Start a new game?</Text>
+            <Text style={styles.modalSub}>Current progress will be lost.</Text>
+
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={styles.cancelBtn}
+                onPress={() => setShowNewGameModal(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.confirmBtn}
+                onPress={() => {
+                  setShowNewGameModal(false);
+                  handleStartGame(selectedLevel);
+                }}
+              >
+                <Text style={styles.confirmBtnText}>Start New Game</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Campaign Result Modal (Win / Lose) */}
+      <Modal visible={isGameOver} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultCard}>
+            {isPlayerWinner ? (
+              <>
+                <View style={styles.trophyCircle}>
+                  <Trophy size={36} color="#D4AF37" />
+                </View>
+                <Text style={styles.victoryTitle}>🏆 Victory!</Text>
+                <Text style={styles.victorySubtitle}>Level Completed!</Text>
+                <Text style={styles.unlockText}>Next Level Unlocked</Text>
+
+                <View style={styles.resultBtnRow}>
+                  <Pressable
+                    style={styles.exitBtn}
+                    onPress={onBackToHome}
+                  >
+                    <Text style={styles.exitBtnText}>Exit</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.continueBtn}
+                    onPress={handleContinueNextLevel}
+                  >
+                    <Text style={styles.continueBtnText}>Continue</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.lossTitle}>Game Over</Text>
+                <Text style={styles.lossSub}>
+                  {winner === "draw" ? "Match ended in a draw." : `Defeated by Stockfish Level ${aiLevel}`}
+                </Text>
+
+                <View style={styles.resultBtnRow}>
+                  <Pressable
+                    style={styles.exitBtn}
+                    onPress={onBackToHome}
+                  >
+                    <Text style={styles.exitBtnText}>Exit</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.retryBtn}
+                    onPress={handleRetryCurrentLevel}
+                  >
+                    <RotateCcw size={18} color="#06070B" />
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -333,197 +390,126 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#050505",
+    backgroundColor: "#06070B",
   },
   content: {
     padding: 16,
-    paddingBottom: 80,
+    paddingBottom: 32,
     gap: 16,
   },
   topHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
+    borderBottomColor: "rgba(255,255,255,0.08)",
   },
-  exitBtn: {
+  headerBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     backgroundColor: "rgba(255,255,255,0.05)",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 8,
   },
-  exitBtnText: {
+  headerBtnText: {
     color: "#E4E4E7",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "bold",
   },
-  levelBadge: {
+  headerTitleBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "rgba(212, 175, 55, 0.1)",
     borderWidth: 1,
     borderColor: "rgba(212, 175, 55, 0.3)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  levelBadgeText: {
+  headerTitleText: {
     color: "#D4AF37",
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "bold",
   },
   setupCard: {
-    backgroundColor: "#0A0A0C",
-    borderRadius: 24,
+    backgroundColor: "rgba(18, 20, 29, 0.75)",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.08)",
     padding: 20,
-    gap: 16,
+    gap: 18,
   },
   setupTitle: {
-    color: "#D4AF37",
-    fontSize: 22,
+    color: "#FFFFFF",
+    fontSize: 20,
     fontWeight: "bold",
-    textAlign: "center",
   },
   setupSub: {
     color: "#A1A1AA",
     fontSize: 12,
-    textAlign: "center",
+    marginTop: -12,
+  },
+  setupSection: {
+    gap: 8,
   },
   label: {
     color: "#D4AF37",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "bold",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
-  levelRow: {
+  chipRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 6,
+    gap: 8,
   },
-  levelBtn: {
+  chip: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: "center",
   },
-  activeLevelBtn: {
-    backgroundColor: "#D4AF37",
-    borderColor: "#D4AF37",
-  },
-  levelBtnText: {
-    color: "#A1A1AA",
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  activeLevelBtnText: {
-    color: "#000",
-  },
-  grid2: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  grid3: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  optionBtn: {
+  chipFlex: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     alignItems: "center",
   },
-  activeOptionBtn: {
-    backgroundColor: "rgba(212, 175, 55, 0.18)",
+  chipActive: {
+    backgroundColor: "rgba(212, 175, 55, 0.2)",
     borderColor: "#D4AF37",
   },
-  optionText: {
+  chipText: {
     color: "#A1A1AA",
     fontSize: 12,
     fontWeight: "bold",
   },
-  activeOptionText: {
+  chipTextActive: {
     color: "#D4AF37",
   },
   startBtn: {
     backgroundColor: "#D4AF37",
-    paddingVertical: 14,
-    borderRadius: 22,
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: "center",
     marginTop: 8,
   },
   startBtnText: {
-    color: "#000",
-    fontSize: 13,
+    color: "#06070B",
     fontWeight: "bold",
-    letterSpacing: 1,
+    fontSize: 14,
   },
   gameLayout: {
     gap: 12,
-  },
-  openingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(13, 14, 21, 0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.25)",
-    padding: 12,
-    borderRadius: 16,
-  },
-  openingText: {
-    color: "#D4AF37",
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  openingActions: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  hintBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(212, 175, 55, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.3)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  hintBtnText: {
-    color: "#D4AF37",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  saveBtnText: {
-    color: "#E4E4E7",
-    fontSize: 10,
-    fontWeight: "bold",
   },
   boardWrap: {
     flexDirection: "row",
@@ -531,56 +517,192 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  actionRow: {
+  evalBarBox: {
+    height: 320,
+  },
+  actionBar: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(13, 14, 21, 0.92)",
+    backgroundColor: "rgba(18, 20, 29, 0.75)",
     borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.25)",
-    padding: 12,
-    borderRadius: 18,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 14,
+    padding: 8,
+    gap: 8,
   },
-  controlBtn: {
+  actionBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  controlBtnText: {
+  actionBtnDisabled: {
+    opacity: 0.35,
+  },
+  actionBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "#0D0E15",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.3)",
+    padding: 22,
+    alignItems: "center",
+    gap: 8,
+  },
+  modalTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  modalSub: {
+    color: "#A1A1AA",
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  modalBtnRow: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  cancelBtnText: {
     color: "#E4E4E7",
-    fontSize: 11,
     fontWeight: "bold",
+    fontSize: 13,
   },
-  resignBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(159, 18, 57, 0.8)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  resignBtnText: {
-    color: "#FDA4AF",
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  analysisBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  confirmBtn: {
+    flex: 1,
     backgroundColor: "#D4AF37",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 12,
+    alignItems: "center",
   },
-  analysisBtnText: {
-    color: "#000",
-    fontSize: 11,
+  confirmBtnText: {
+    color: "#06070B",
     fontWeight: "bold",
+    fontSize: 13,
+  },
+  resultCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: "#0D0E15",
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: "#D4AF37",
+    padding: 24,
+    alignItems: "center",
+    gap: 8,
+  },
+  trophyCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(212, 175, 55, 0.15)",
+    borderWidth: 1,
+    borderColor: "#D4AF37",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  victoryTitle: {
+    color: "#D4AF37",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  victorySubtitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  unlockText: {
+    color: "#38BDF8",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  resultBtnRow: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginTop: 4,
+  },
+  exitBtn: {
+    flex: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exitBtnText: {
+    color: "#E4E4E7",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+  continueBtn: {
+    flex: 1,
+    backgroundColor: "#D4AF37",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  continueBtnText: {
+    color: "#06070B",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+  lossTitle: {
+    color: "#EF4444",
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+  lossSub: {
+    color: "#A1A1AA",
+    fontSize: 13,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  retryBtn: {
+    flex: 1,
+    backgroundColor: "#D4AF37",
+    paddingVertical: 14,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  retryBtnText: {
+    color: "#06070B",
+    fontWeight: "bold",
+    fontSize: 15,
   },
 });

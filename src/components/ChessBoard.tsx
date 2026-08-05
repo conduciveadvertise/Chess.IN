@@ -5,7 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Modal,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { Chess, Square } from "chess.js";
 import { BoardTheme, PieceTheme } from "../types/chess";
@@ -20,15 +20,12 @@ interface ChessBoardProps {
   onMove?: (from: string, to: string, promotion?: string) => void;
   disabled?: boolean;
   lastMove?: { from: string; to: string } | null;
+  fen?: string;
 }
-
-const { width: screenWidth } = Dimensions.get("window");
-const BOARD_SIZE = Math.min(screenWidth - 32, 480);
-const SQUARE_SIZE = BOARD_SIZE / 8;
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
   chess,
-  boardTheme = "gold",
+  boardTheme = "slate",
   pieceTheme = "neo_staunton",
   orientation = "w",
   highlightLegalMoves = true,
@@ -36,9 +33,15 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   disabled = false,
   lastMove = null,
 }) => {
+  const { width: windowWidth } = useWindowDimensions();
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<Square[]>([]);
   const [promotionMove, setPromotionMove] = useState<{ from: Square; to: Square } | null>(null);
+
+  // Dynamic full-screen width calculation with minimal side margins (~8px on each side)
+  const maxAvailableWidth = Math.min(windowWidth - 16, 560);
+  const squareSize = Math.floor(maxAvailableWidth / 8);
+  const boardSize = squareSize * 8;
 
   const getThemeColors = () => {
     switch (boardTheme) {
@@ -46,17 +49,31 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
         return {
           light: "#EEEED2",
           dark: "#769656",
-          border: "#2E5B38",
+          border: "#D4AF37",
           selectGlow: "#F59E0B",
-          lastMoveHighlight: "rgba(245, 158, 11, 0.38)",
+          lastMoveHighlight: "rgba(245, 158, 11, 0.42)",
+          coordLight: "#769656",
+          coordDark: "#EEEED2",
+        };
+      case "gold":
+        return {
+          light: "#E2D1A3",
+          dark: "#2B2D3A",
+          border: "#D4AF37",
+          selectGlow: "#D4AF37",
+          lastMoveHighlight: "rgba(212, 175, 55, 0.45)",
+          coordLight: "#2B2D3A",
+          coordDark: "#E2D1A3",
         };
       case "marble":
         return {
           light: "#F0D9B5",
           dark: "#B58863",
-          border: "#8B5A2B",
+          border: "#D4AF37",
           selectGlow: "#D4AF37",
-          lastMoveHighlight: "rgba(212, 175, 55, 0.4)",
+          lastMoveHighlight: "rgba(212, 175, 55, 0.45)",
+          coordLight: "#B58863",
+          coordDark: "#F0D9B5",
         };
       case "cyber":
         return {
@@ -64,16 +81,21 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
           dark: "#192A38",
           border: "#00F0FF",
           selectGlow: "#00F0FF",
-          lastMoveHighlight: "rgba(0, 240, 255, 0.35)",
+          lastMoveHighlight: "rgba(0, 240, 255, 0.4)",
+          coordLight: "#192A38",
+          coordDark: "#70A0AF",
         };
+      case "slate":
       default:
-        // Royal Obsidian & Gold
+        // Original Slate / Wood Theme
         return {
-          light: "#E2D1A3",
-          dark: "#2B2D3A",
+          light: "#E8D3A5",
+          dark: "#B98E66",
           border: "#D4AF37",
           selectGlow: "#D4AF37",
-          lastMoveHighlight: "rgba(212, 175, 55, 0.4)",
+          lastMoveHighlight: "rgba(212, 175, 55, 0.45)",
+          coordLight: "#B98E66",
+          coordDark: "#E8D3A5",
         };
     }
   };
@@ -139,106 +161,109 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   };
 
   return (
-    <View style={[styles.container, { width: BOARD_SIZE + 20, height: BOARD_SIZE + 20 }]}>
-      <View
-        style={[
-          styles.boardFrame,
-          {
-            borderColor: themeColors.border,
-            width: BOARD_SIZE,
-            height: BOARD_SIZE,
-          },
-        ]}
-      >
-        {displayRanks.map((rank, rIdx) => (
-          <View key={rank} style={styles.row}>
-            {displayFiles.map((file, cIdx) => {
-              const squareStr = `${file}${rank}` as Square;
-              const isLight = (rIdx + cIdx) % 2 === 0;
-              const piece = chess.get(squareStr);
+    <View style={[styles.floatingTable, { width: boardSize + 16 }]}>
+      {/* Dark Walnut Wood / Luxury Marble Outer Floating Frame */}
+      <View style={styles.woodBorderMat}>
+        <View
+          style={[
+            styles.boardFrame,
+            {
+              borderColor: themeColors.border,
+              width: boardSize,
+              height: boardSize,
+            },
+          ]}
+        >
+          {displayRanks.map((rank, rIdx) => (
+            <View key={rank} style={styles.row}>
+              {displayFiles.map((file, cIdx) => {
+                const squareStr = `${file}${rank}` as Square;
+                const isLight = (rIdx + cIdx) % 2 === 0;
+                const piece = chess.get(squareStr);
 
-              const isSelected = selectedSquare === squareStr;
-              const isPossibleMove = possibleMoves.includes(squareStr);
-              const isLastMoveFrom = lastMove?.from === squareStr;
-              const isLastMoveTo = lastMove?.to === squareStr;
+                const isSelected = selectedSquare === squareStr;
+                const isPossibleMove = possibleMoves.includes(squareStr);
+                const isLastMoveFrom = lastMove?.from === squareStr;
+                const isLastMoveTo = lastMove?.to === squareStr;
 
-              const isKingInCheck =
-                isChecked &&
-                piece &&
-                piece.type === "k" &&
-                piece.color === currentTurn;
+                const isKingInCheck =
+                  isChecked &&
+                  piece &&
+                  piece.type === "k" &&
+                  piece.color === currentTurn;
 
-              return (
-                <Pressable
-                  key={squareStr}
-                  onPress={() => handleSquarePress(squareStr)}
-                  style={[
-                    styles.square,
-                    {
-                      width: SQUARE_SIZE,
-                      height: SQUARE_SIZE,
-                      backgroundColor: isLight ? themeColors.light : themeColors.dark,
-                    },
-                    (isLastMoveFrom || isLastMoveTo) && {
-                      backgroundColor: themeColors.lastMoveHighlight,
-                    },
-                    isSelected && {
-                      backgroundColor: "rgba(212, 175, 55, 0.45)",
-                      borderColor: themeColors.selectGlow,
-                      borderWidth: 2,
-                    },
-                    isKingInCheck && styles.checkSquare,
-                  ]}
-                >
-                  {/* Rank Label (shown on left column) */}
-                  {cIdx === 0 && (
-                    <Text
-                      style={[
-                        styles.coordRank,
-                        { color: isLight ? themeColors.dark : themeColors.light },
-                      ]}
-                    >
-                      {rank}
-                    </Text>
-                  )}
+                return (
+                  <Pressable
+                    key={squareStr}
+                    onPress={() => handleSquarePress(squareStr)}
+                    style={[
+                      styles.square,
+                      {
+                        width: squareSize,
+                        height: squareSize,
+                        backgroundColor: isLight ? themeColors.light : themeColors.dark,
+                      },
+                      (isLastMoveFrom || isLastMoveTo) && {
+                        backgroundColor: themeColors.lastMoveHighlight,
+                      },
+                      isSelected && {
+                        backgroundColor: "rgba(212, 175, 55, 0.5)",
+                        borderColor: themeColors.selectGlow,
+                        borderWidth: 2,
+                      },
+                      isKingInCheck && styles.checkSquare,
+                    ]}
+                  >
+                    {/* Rank Label (shown on left column) */}
+                    {cIdx === 0 && (
+                      <Text
+                        style={[
+                          styles.coordRank,
+                          { color: isLight ? themeColors.coordLight : themeColors.coordDark },
+                        ]}
+                      >
+                        {rank}
+                      </Text>
+                    )}
 
-                  {/* File Label (shown on bottom row) */}
-                  {rIdx === 7 && (
-                    <Text
-                      style={[
-                        styles.coordFile,
-                        { color: isLight ? themeColors.dark : themeColors.light },
-                      ]}
-                    >
-                      {file}
-                    </Text>
-                  )}
+                    {/* File Label (shown on bottom row) */}
+                    {rIdx === 7 && (
+                      <Text
+                        style={[
+                          styles.coordFile,
+                          { color: isLight ? themeColors.coordLight : themeColors.coordDark },
+                        ]}
+                      >
+                        {file}
+                      </Text>
+                    )}
 
-                  {/* Move Highlight Overlay */}
-                  {highlightLegalMoves && isPossibleMove && (
-                    <View style={styles.possibleDotOverlay} pointerEvents="none">
-                      {piece ? (
-                        <View style={[styles.captureRing, { borderColor: themeColors.selectGlow }]} />
-                      ) : (
-                        <View style={[styles.moveDot, { backgroundColor: themeColors.selectGlow }]} />
-                      )}
-                    </View>
-                  )}
+                    {/* Move Highlight Overlay */}
+                    {highlightLegalMoves && isPossibleMove && (
+                      <View style={styles.possibleDotOverlay} pointerEvents="none">
+                        {piece ? (
+                          <View style={[styles.captureRing, { borderColor: themeColors.selectGlow }]} />
+                        ) : (
+                          <View style={[styles.moveDot, { backgroundColor: themeColors.selectGlow }]} />
+                        )}
+                      </View>
+                    )}
 
-                  {/* Piece */}
-                  {piece && (
-                    <ChessPiece
-                      type={piece.type}
-                      color={piece.color}
-                      theme={pieceTheme}
-                      size={SQUARE_SIZE * 0.85}
-                    />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
+                    {/* Piece Rendering - Always upright standard orientation */}
+                    {piece && (
+                      <ChessPiece
+                        type={piece.type}
+                        color={piece.color}
+                        theme={pieceTheme}
+                        size={squareSize * 0.88}
+                      />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
       </View>
 
       {/* Pawn Promotion Modal */}
@@ -246,7 +271,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>PROMOTION</Text>
-            <Text style={styles.modalSub}>Select grandmaster piece rank:</Text>
+            <Text style={styles.modalSub}>Choose grandmaster piece rank:</Text>
 
             <View style={styles.promoRow}>
               {[
@@ -264,7 +289,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                     type={item.type as any}
                     color={chess.turn()}
                     theme={pieceTheme}
-                    size={38}
+                    size={42}
                   />
                   <Text style={styles.promoLabel}>{item.label}</Text>
                 </Pressable>
@@ -278,23 +303,25 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  floatingTable: {
     alignSelf: "center",
-    backgroundColor: "rgba(13, 14, 21, 0.95)",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 10,
-    shadowColor: "#D4AF37",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
+    marginVertical: 4,
+    // Realistic floating shadow over luxury background
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.7,
+    shadowRadius: 28,
+  },
+  woodBorderMat: {
+    padding: 8,
+    borderRadius: 18,
+    backgroundColor: "#161822",
+    borderWidth: 1.5,
+    borderColor: "rgba(212, 175, 55, 0.45)",
   },
   boardFrame: {
     borderWidth: 2,
-    borderRadius: 14,
+    borderRadius: 10,
     overflow: "hidden",
   },
   row: {
@@ -314,7 +341,9 @@ const styles = StyleSheet.create({
     left: 3,
     fontSize: 10,
     fontWeight: "bold",
-    opacity: 0.8,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   coordFile: {
     position: "absolute",
@@ -322,7 +351,9 @@ const styles = StyleSheet.create({
     right: 3,
     fontSize: 10,
     fontWeight: "bold",
-    opacity: 0.8,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   possibleDotOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -353,16 +384,16 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCard: {
-    backgroundColor: "rgba(13, 14, 21, 0.98)",
+    backgroundColor: "#0D0E15",
     borderRadius: 24,
     borderWidth: 1,
     borderColor: "rgba(212, 175, 55, 0.45)",
     padding: 24,
     alignItems: "center",
-    width: 300,
+    width: 310,
     shadowColor: "#D4AF37",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
   },
   modalTitle: {
@@ -396,3 +427,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 });
+

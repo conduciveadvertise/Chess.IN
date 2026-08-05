@@ -86,7 +86,7 @@ export const TournamentView: React.FC<TournamentViewProps> = ({
               <Text style={styles.playerRank}>#{idx + 1}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.playerName}>{p.userName}</Text>
-                <Text style={styles.playerRating}>{p.userRating} ELO</Text>
+                <Text style={styles.playerRating}>{p.userRating}</Text>
               </View>
               <Text style={styles.playerScore}>{p.score} pts</Text>
             </View>

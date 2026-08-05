@@ -1,67 +1,56 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, SafeAreaView, StatusBar, Text } from "react-native";
+import React, { useState } from "react";
+import { View, StyleSheet, SafeAreaView, StatusBar } from "react-native";
 import { Navbar } from "./components/Navbar";
 import { HomeView } from "./views/HomeView";
 import { PlayVsAiView } from "./views/PlayVsAiView";
-import { PlayOnlineView } from "./views/PlayOnlineView";
 import { PlayPassView } from "./views/PlayPassView";
-import { PuzzlesView } from "./views/PuzzlesView";
-import { AnalysisView } from "./views/AnalysisView";
-import { LearnView } from "./views/LearnView";
-import { LeaderboardView } from "./views/LeaderboardView";
-import { ProfileView } from "./views/ProfileView";
-import { TournamentView } from "./views/TournamentView";
 import { SettingsModal } from "./views/SettingsModal";
-import { AuthModal } from "./components/AuthModal";
-import { SocialHubModal } from "./components/SocialHubModal";
-import { GameMode, GameSettings, UserProfile } from "./types/chess";
-import { useAuth, initializeAuth } from "./services/authService";
-import { useSocialStore } from "./services/socialStore";
-import { userSettingsRepository } from "./repositories/UserSettingsRepository";
+import { GameSettings, PieceTheme } from "./types/chess";
 
 export default function App() {
-  const [currentMode, setCurrentMode] = useState<GameMode | "home" | "leaderboard" | "profile">("home");
-  const authState = useAuth();
-  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
-  const [isSocialOpen, setIsSocialOpen] = useState<boolean>(false);
+  const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play">("home");
+  const [selectedAiLevel, setSelectedAiLevel] = useState<number>(1);
 
-  const { incomingRequests, unreadNotificationCount, matchInvites } = useSocialStore();
-  const totalUnreadSocial = incomingRequests.length + unreadNotificationCount + matchInvites.length;
-
-  const [settings, setSettings] = useState<GameSettings>({
-    boardTheme: "gold",
-    pieceTheme: "neo_staunton",
-    soundEnabled: true,
-    highlightLegalMoves: true,
-    showEvalBar: true,
-    autoFlipBoard: false,
-    coachEnabled: true,
-    moveAnimationSpeed: "normal",
+  const [settings, setSettings] = useState<GameSettings>(() => {
+    let savedTheme: PieceTheme = "neo_staunton";
+    try {
+      const stored = localStorage.getItem("chess_in_piece_theme") as PieceTheme;
+      if (stored) savedTheme = stored;
+    } catch (e) {}
+    return {
+      boardTheme: "slate",
+      pieceTheme: savedTheme,
+      soundEnabled: true,
+      highlightLegalMoves: true,
+      showEvalBar: true,
+      autoFlipBoard: false,
+      coachEnabled: true,
+      moveAnimationSpeed: "normal",
+    };
   });
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
-  useEffect(() => {
-    initializeAuth((remoteSettings) => {
-      setSettings((prev) => ({ ...prev, ...remoteSettings }));
-    });
-  }, []);
-
   const handleUpdateSettings = (newSettings: Partial<GameSettings>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
-      if (authState.user) {
-        userSettingsRepository.saveSettings(authState.user.id, updated).catch((err) => {
-          console.warn("Failed to persist user settings:", err);
-        });
+      if (newSettings.pieceTheme) {
+        try {
+          localStorage.setItem("chess_in_piece_theme", newSettings.pieceTheme);
+        } catch (e) {}
       }
       return updated;
     });
   };
 
-  const handleSolvePuzzle = () => {};
-
-  const activeUser: UserProfile = authState.profile;
+  const handleSelectMode = (mode: string, level?: number) => {
+    if (level !== undefined) {
+      setSelectedAiLevel(level);
+    }
+    if (mode === "vs_ai" || mode === "pass_and_play" || mode === "home") {
+      setCurrentMode(mode as any);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,37 +59,25 @@ export default function App() {
       {/* Header Navbar */}
       <Navbar
         currentMode={currentMode}
-        onSelectMode={(mode) => setCurrentMode(mode)}
-        user={activeUser}
+        onSelectMode={handleSelectMode}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onOpenSocial={() => setIsSocialOpen(true)}
-        unreadSocialCount={totalUnreadSocial}
-        isAuthenticated={authState.isAuthenticated}
       />
 
       {/* Main Screen Body */}
       <View style={styles.main}>
         {currentMode === "home" && (
           <HomeView
-            onSelectMode={(mode) => setCurrentMode(mode)}
-            user={activeUser}
+            onSelectMode={handleSelectMode}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         )}
 
         {currentMode === "vs_ai" && (
           <PlayVsAiView
-            user={activeUser}
+            initialLevel={selectedAiLevel}
             settings={settings}
             onBackToHome={() => setCurrentMode("home")}
-          />
-        )}
-
-        {currentMode === "online" && (
-          <PlayOnlineView
-            user={activeUser}
-            settings={settings}
-            onBackToHome={() => setCurrentMode("home")}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         )}
 
@@ -110,53 +87,9 @@ export default function App() {
             onBackToHome={() => setCurrentMode("home")}
           />
         )}
-
-        {currentMode === "puzzle" && (
-          <PuzzlesView
-            settings={settings}
-            onBackToHome={() => setCurrentMode("home")}
-            onSolvePuzzle={handleSolvePuzzle}
-          />
-        )}
-
-        {currentMode === "analysis" && (
-          <AnalysisView
-            settings={settings}
-            onBackToHome={() => setCurrentMode("home")}
-          />
-        )}
-
-        {currentMode === "learn" && (
-          <LearnView
-            settings={settings}
-            onBackToHome={() => setCurrentMode("home")}
-          />
-        )}
-
-        {currentMode === "leaderboard" && (
-          <LeaderboardView
-            onBackToHome={() => setCurrentMode("home")}
-          />
-        )}
-
-        {currentMode === "profile" && (
-          <ProfileView
-            user={activeUser}
-            onBackToHome={() => setCurrentMode("home")}
-            onOpenAuth={() => setIsAuthOpen(true)}
-          />
-        )}
-
-        {currentMode === "tournaments" && (
-          <TournamentView
-            user={activeUser}
-            settings={settings}
-            onBackToHome={() => setCurrentMode("home")}
-          />
-        )}
       </View>
 
-      {/* Modals */}
+      {/* Settings Modal */}
       {isSettingsOpen && (
         <SettingsModal
           settings={settings}
@@ -164,19 +97,6 @@ export default function App() {
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
-
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-      />
-
-      <SocialHubModal
-        isOpen={isSocialOpen}
-        onClose={() => setIsSocialOpen(false)}
-        onLaunchMatch={() => {
-          setCurrentMode("online");
-        }}
-      />
     </SafeAreaView>
   );
 }

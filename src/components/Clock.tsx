@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { UserProfile } from "../types/chess";
 
 interface ClockProps {
   player?: any;
@@ -35,8 +34,10 @@ export const Clock: React.FC<ClockProps> = ({
   useEffect(() => {
     if (timeLeftSeconds !== undefined) {
       setSecLeft(timeLeftSeconds);
+    } else {
+      setSecLeft(initialTime);
     }
-  }, [timeLeftSeconds]);
+  }, [timeLeftSeconds, initialTime]);
 
   useEffect(() => {
     let timer: any = null;
@@ -61,14 +62,7 @@ export const Clock: React.FC<ClockProps> = ({
     playerName ||
     player?.username ||
     player?.displayName ||
-    "Grandmaster Player";
-
-  const ratingToDisplay =
-    playerRating ||
-    player?.rating?.rapid ||
-    1500;
-
-  const titleToDisplay = playerTitle || player?.title || "GM";
+    "Player";
 
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(Math.max(0, totalSeconds) / 60);
@@ -95,12 +89,14 @@ export const Clock: React.FC<ClockProps> = ({
 
         <View style={styles.playerInfo}>
           <View style={styles.titleRow}>
-            <Text style={styles.titleBadge}>{titleToDisplay}</Text>
+            {Boolean(playerTitle) && <Text style={styles.titleBadge}>{playerTitle}</Text>}
             <Text style={styles.playerName} numberOfLines={1}>
               {nameToDisplay}
             </Text>
           </View>
-          <Text style={styles.playerRating}>{ratingToDisplay} ELO</Text>
+          {Boolean(playerRating) && (
+            <Text style={styles.playerRating}>{playerRating}</Text>
+          )}
         </View>
       </View>
 

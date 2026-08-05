@@ -87,6 +87,7 @@ export const PlayPassView: React.FC<PlayPassViewProps> = ({
         <View style={styles.boardWrap}>
           <ChessBoard
             chess={chess}
+            fen={fen}
             boardTheme={settings.boardTheme}
             pieceTheme={settings.pieceTheme}
             orientation={orientation}

@@ -1,8 +1,9 @@
-import { Chess, Square } from "chess.js";
+import { Chess } from "chess.js";
 import { StockfishLevelConfig, MoveClassification, OpeningInfo } from "../types/chess";
 import { detectOpening } from "./openingBook";
+import { STOCKFISH_JS_SOURCE } from "../assets/stockfishSource";
 
-// Piece Values in Centipawns
+// Piece Values in Centipawns for fallback evaluation
 const PIECE_VALUES: Record<string, number> = {
   p: 100,
   n: 320,
@@ -12,7 +13,7 @@ const PIECE_VALUES: Record<string, number> = {
   k: 20000,
 };
 
-// PST tables for positional evaluation
+// PST tables for positional evaluation fallback
 const PAWN_PST = [
   0,  0,  0,  0,  0,  0,  0,  0,
   50, 50, 50, 50, 50, 50, 50, 50,
@@ -47,23 +48,92 @@ const BISHOP_PST = [
 ];
 
 export class StockfishEngine {
+  private static worker: Worker | null = null;
+  private static activeSearchId = 0;
+
   /**
-   * Generates configuration specs for Stockfish levels 1 through 20
+   * Generates exact configuration specs for Stockfish levels 1 through 20
    */
-  static getLevelConfig(level: number): StockfishLevelConfig {
-    const clampedLevel = Math.max(1, Math.min(20, level));
-    const elo = 800 + (clampedLevel - 1) * 125; // 800 to 3175 ELO
-    const depth = Math.min(6, Math.max(1, Math.floor(clampedLevel / 3)));
-    const blunderRate = Math.max(0, (20 - clampedLevel) * 0.025); // 47.5% down to 0%
-    const thinkingTimeMs = Math.min(1500, 200 + clampedLevel * 50);
+  static getLevelConfig(level: number): StockfishLevelConfig & {
+    skillLevel: number;
+    useLimitStrength: boolean;
+    thinkingTimeMs: number;
+  } {
+    const clamped = Math.max(1, Math.min(20, Math.round(level)));
+    
+    // Exact Elo and Skill progression mapping according to user requirements:
+    // Level 1: Elo 400, Skill 0, Thinking 350ms
+    // Level 20: Maximum Elo 3100+, Skill 20, Thinking 3000ms
+    const elos = [
+      400, 550, 700, 850, 1000,
+      1150, 1300, 1450, 1600, 1750,
+      1900, 2050, 2200, 2350, 2500,
+      2650, 2800, 2950, 3100, 3300
+    ];
+    
+    const skillLevels = [
+      0, 1, 2, 3, 4,
+      6, 8, 10, 12, 14,
+      16, 17, 18, 19, 20,
+      20, 20, 20, 20, 20
+    ];
+
+    const thinkingTimes = [
+      350, 400, 450, 500, 600,
+      700, 800, 850, 900, 1000,
+      1200, 1400, 1600, 1800, 2000,
+      2200, 2400, 2600, 2800, 3000
+    ];
+
+    const idx = clamped - 1;
+    const elo = elos[idx];
+    const skillLevel = skillLevels[idx];
+    const thinkingTimeMs = thinkingTimes[idx];
+    const useLimitStrength = clamped < 20;
 
     return {
-      level: clampedLevel,
+      level: clamped,
       elo,
-      depth,
-      blunderRate,
+      depth: Math.min(22, Math.max(1, clamped + 2)),
+      blunderRate: 0,
+      skillLevel,
+      useLimitStrength,
       thinkingTimeMs,
     };
+  }
+
+  /**
+   * Initializes official Stockfish Web Worker instance (100% offline bundled)
+   */
+  private static getWorker(): Worker | null {
+    if (typeof window === "undefined" || typeof Worker === "undefined") {
+      return null;
+    }
+    if (!this.worker) {
+      try {
+        const blob = new Blob([STOCKFISH_JS_SOURCE], { type: "application/javascript" });
+        const workerUrl = URL.createObjectURL(blob);
+        this.worker = new Worker(workerUrl);
+        this.worker.postMessage("uci");
+        this.worker.postMessage("isready");
+      } catch (e) {
+        console.warn("Could not instantiate Web Worker for Stockfish:", e);
+        this.worker = null;
+      }
+    }
+    return this.worker;
+  }
+
+  /**
+   * Aborts any running AI search calculation
+   */
+  static cancelSearch() {
+    this.activeSearchId++;
+    if (this.worker) {
+      try {
+        this.worker.postMessage("stop");
+      } catch (e) {}
+    }
   }
 
   /**
@@ -107,7 +177,128 @@ export class StockfishEngine {
   }
 
   /**
-   * Computes best move using Stockfish level 1-20 parameters
+   * Asynchronous, official Stockfish engine move calculator
+   */
+  static async getBestMoveAsync(
+    chess: Chess,
+    level: number = 1
+  ): Promise<{ from: string; to: string; promotion?: string; evalAfter?: number } | null> {
+    const currentSearchId = ++this.activeSearchId;
+    const legalMoves = chess.moves({ verbose: true });
+    if (legalMoves.length === 0) return null;
+
+    const config = this.getLevelConfig(level);
+    const worker = this.getWorker();
+
+    if (worker) {
+      return new Promise((resolve) => {
+        let isResolved = false;
+        let lastEval = this.evaluatePosition(chess);
+
+        const cleanup = () => {
+          if (worker) {
+            worker.removeEventListener("message", onMessage);
+          }
+        };
+
+        const timer = setTimeout(() => {
+          if (!isResolved && this.activeSearchId === currentSearchId) {
+            isResolved = true;
+            cleanup();
+            // Fallback move if worker timed out
+            const fallback = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+            resolve({
+              from: fallback.from,
+              to: fallback.to,
+              promotion: fallback.promotion || "q",
+              evalAfter: lastEval,
+            });
+          }
+        }, config.thinkingTimeMs + 2000);
+
+        const onMessage = (event: MessageEvent) => {
+          if (this.activeSearchId !== currentSearchId) {
+            cleanup();
+            clearTimeout(timer);
+            return;
+          }
+
+          const line = typeof event.data === "string" ? event.data : event.data?.data;
+          if (typeof line !== "string") return;
+
+          // Parse evaluation score
+          if (line.includes("score cp ")) {
+            const cpMatch = line.match(/score cp (-?\d+)/);
+            if (cpMatch) {
+              const cp = parseInt(cpMatch[1], 10);
+              lastEval = parseFloat(((chess.turn() === "w" ? cp : -cp) / 100).toFixed(1));
+            }
+          } else if (line.includes("score mate ")) {
+            const mateMatch = line.match(/score mate (-?\d+)/);
+            if (mateMatch) {
+              const m = parseInt(mateMatch[1], 10);
+              lastEval = m > 0 ? 99.0 : -99.0;
+            }
+          }
+
+          // Parse bestmove
+          if (line.startsWith("bestmove ")) {
+            isResolved = true;
+            cleanup();
+            clearTimeout(timer);
+
+            const match = line.match(/^bestmove\s+([a-h][1-8])([a-h][1-8])([qrbn])?/);
+            if (match) {
+              resolve({
+                from: match[1],
+                to: match[2],
+                promotion: match[3] || "q",
+                evalAfter: lastEval,
+              });
+            } else {
+              const fallback = legalMoves[0];
+              resolve({
+                from: fallback.from,
+                to: fallback.to,
+                promotion: fallback.promotion || "q",
+                evalAfter: lastEval,
+              });
+            }
+          }
+        };
+
+        worker.addEventListener("message", onMessage);
+
+        // Configure Stockfish UCI parameters
+        worker.postMessage("ucinewgame");
+        worker.postMessage(`setoption name Skill Level value ${config.skillLevel}`);
+        if (config.useLimitStrength) {
+          worker.postMessage("setoption name UCI_LimitStrength value true");
+          worker.postMessage(`setoption name UCI_Elo value ${config.elo}`);
+        } else {
+          worker.postMessage("setoption name UCI_LimitStrength value false");
+        }
+
+        worker.postMessage(`position fen ${chess.fen()}`);
+        worker.postMessage(`go movetime ${config.thinkingTimeMs}`);
+      });
+    }
+
+    // Fallback if Web Worker is not available in environment
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (this.activeSearchId !== currentSearchId) {
+          resolve(null);
+          return;
+        }
+        const bestMove = this.getBestMove(chess, level, true);
+        resolve(bestMove);
+      }, config.thinkingTimeMs);
+    });
+  }
+
+  /**
+   * Computes best move synchronously (fallback)
    */
   static getBestMove(chess: Chess, level: number = 1, instant: boolean = false): { from: string; to: string; promotion?: string; evalAfter?: number } | null {
     const moves = chess.moves({ verbose: true });
@@ -115,22 +306,13 @@ export class StockfishEngine {
 
     const config = this.getLevelConfig(level);
 
-    // Blunder chance check
-    if (!instant && Math.random() < config.blunderRate) {
-      const randomMove = moves[Math.floor(Math.random() * moves.length)];
-      return {
-        from: randomMove.from,
-        to: randomMove.to,
-        promotion: randomMove.promotion || "q",
-      };
-    }
-
     let bestMove = moves[0];
     let bestValue = chess.turn() === "w" ? -Infinity : Infinity;
+    const depth = Math.min(4, Math.max(1, Math.floor(config.level / 4)));
 
     for (const move of moves) {
       chess.move(move);
-      const val = this.minimax(chess, config.depth - 1, -Infinity, Infinity, chess.turn() === "w");
+      const val = this.minimax(chess, depth - 1, -Infinity, Infinity, chess.turn() === "w");
       chess.undo();
 
       if (chess.turn() === "w") {
@@ -155,9 +337,15 @@ export class StockfishEngine {
   }
 
   /**
-   * Minimax search with alpha-beta pruning
+   * Minimax search with alpha-beta pruning (fallback)
    */
-  private static minimax(chess: Chess, depth: number, alpha: number, beta: number, isMaximizing: boolean): number {
+  private static minimax(
+    chess: Chess,
+    depth: number,
+    alpha: number,
+    beta: number,
+    isMaximizing: boolean
+  ): number {
     if (depth <= 0 || chess.isGameOver()) {
       return this.evaluatePosition(chess);
     }
