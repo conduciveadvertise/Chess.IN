@@ -14,11 +14,9 @@ export default function App() {
   const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play" | "puzzle_rush">("home");
   const [selectedAiLevel, setSelectedAiLevel] = useState<number>(1);
 
-  const stored = null;
-// Abhi testing ke liye localStorage ko disable kar do.
-    try {
-      // localStorage.setItem(...) ko comment kar do
-    } catch (e) {}
+const [settings, setSettings] = useState<GameSettings>(() => {
+  const savedTheme: PieceTheme = "neo_staunton";
+
     return {
       boardTheme: "slate",
       pieceTheme: savedTheme,
@@ -44,7 +42,7 @@ export default function App() {
       const updated = { ...prev, ...newSettings };
       if (newSettings.pieceTheme) {
         try {
-          localStorage.setItem("chess_in_piece_theme", newSettings.pieceTheme);
+         //localStorage.setItem("chess_in_piece_theme", newSettings.pieceTheme);
         } catch (e) {}
       }
       return updated;
