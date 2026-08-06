@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Image,
 } from "react-native";
 import { PuzzleRushCard } from "../components/PuzzleRushCard";
 import { GameSettings } from "../types/chess";
@@ -82,9 +83,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
     >
       {/* App Logo & Brand Header */}
       <View style={styles.brandHeader}>
-        <View style={styles.logoBadge}>
-          <Crown size={28} color="#D4AF37" />
-        </View>
+      <View style={styles.logoBadge}>
+  <Image
+    source={require("../../assets/home_logo.png")}
+    style={{ width: 64, height: 64, resizeMode: "contain" }}
+  />
+</View>
         <View style={styles.brandTextGroup}>
           <Text style={styles.brandName}>
             CHESS<Text style={styles.brandNameIn}>.IN</Text>
