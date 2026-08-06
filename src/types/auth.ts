@@ -28,6 +28,7 @@ export interface DbUserSettings {
   auto_flip_board: boolean;
   coach_enabled: boolean;
   move_animation_speed: string;
+  low_power_mode?: boolean;
   updated_at: string;
 }
 

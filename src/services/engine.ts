@@ -50,6 +50,15 @@ const BISHOP_PST = [
 export class StockfishEngine {
   private static worker: Worker | null = null;
   private static activeSearchId = 0;
+  public static lowPowerMode = false;
+
+  static setLowPowerMode(enabled: boolean) {
+    this.lowPowerMode = enabled;
+  }
+
+  static isLowPowerMode(): boolean {
+    return this.lowPowerMode;
+  }
 
   /**
    * Generates exact configuration specs for Stockfish levels 1 through 20
@@ -88,13 +97,18 @@ export class StockfishEngine {
     const idx = clamped - 1;
     const elo = elos[idx];
     const skillLevel = skillLevels[idx];
-    const thinkingTimeMs = thinkingTimes[idx];
+    const thinkingTimeMs = this.lowPowerMode
+      ? Math.min(250, thinkingTimes[idx])
+      : thinkingTimes[idx];
+    const searchDepth = this.lowPowerMode
+      ? Math.min(5, Math.max(1, clamped))
+      : Math.min(22, Math.max(1, clamped + 2));
     const useLimitStrength = clamped < 20;
 
     return {
       level: clamped,
       elo,
-      depth: Math.min(22, Math.max(1, clamped + 2)),
+      depth: searchDepth,
       blunderRate: 0,
       skillLevel,
       useLimitStrength,
@@ -280,7 +294,11 @@ export class StockfishEngine {
         }
 
         worker.postMessage(`position fen ${chess.fen()}`);
-        worker.postMessage(`go movetime ${config.thinkingTimeMs}`);
+        if (this.lowPowerMode) {
+          worker.postMessage(`go depth ${config.depth} movetime ${config.thinkingTimeMs}`);
+        } else {
+          worker.postMessage(`go movetime ${config.thinkingTimeMs}`);
+        }
       });
     }
 
@@ -308,7 +326,9 @@ export class StockfishEngine {
 
     let bestMove = moves[0];
     let bestValue = chess.turn() === "w" ? -Infinity : Infinity;
-    const depth = Math.min(4, Math.max(1, Math.floor(config.level / 4)));
+    const depth = this.lowPowerMode
+      ? 1
+      : Math.min(4, Math.max(1, Math.floor(config.level / 4)));
 
     for (const move of moves) {
       chess.move(move);

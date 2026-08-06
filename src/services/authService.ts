@@ -108,6 +108,7 @@ export async function initializeAuth(onSettingsLoaded?: (settings: Partial<GameS
           autoFlipBoard: dbSettings.auto_flip_board,
           coachEnabled: dbSettings.coach_enabled,
           moveAnimationSpeed: dbSettings.move_animation_speed as any,
+          lowPowerMode: dbSettings.low_power_mode,
         });
       }
 

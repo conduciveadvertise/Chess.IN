@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated, Easing } from "react-native";
+import { StockfishEngine } from "../services/engine";
 
 interface EvalBarProps {
   score: number; // Positive = White advantage, Negative = Black advantage
@@ -53,9 +54,10 @@ export const EvalBar: React.FC<EvalBarProps> = ({
   const animPercent = useRef(new Animated.Value(targetWhitePercent)).current;
 
   useEffect(() => {
+    const isLowPower = StockfishEngine.isLowPowerMode();
     Animated.timing(animPercent, {
       toValue: targetWhitePercent,
-      duration: 350,
+      duration: isLowPower ? 0 : 350,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();

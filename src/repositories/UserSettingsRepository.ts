@@ -38,6 +38,7 @@ export class UserSettingsRepository {
         auto_flip_board: settings.autoFlipBoard,
         coach_enabled: settings.coachEnabled,
         move_animation_speed: settings.moveAnimationSpeed,
+        low_power_mode: settings.lowPowerMode,
         updated_at: new Date().toISOString(),
       };
 
@@ -67,6 +68,7 @@ export class UserSettingsRepository {
       autoFlipBoard: dbSettings.auto_flip_board ?? defaultSettings.autoFlipBoard,
       coachEnabled: dbSettings.coach_enabled ?? defaultSettings.coachEnabled,
       moveAnimationSpeed: (dbSettings.move_animation_speed as any) || defaultSettings.moveAnimationSpeed,
+      lowPowerMode: dbSettings.low_power_mode ?? defaultSettings.lowPowerMode ?? false,
     };
   }
 }

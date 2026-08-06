@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Switch, StyleSheet, Modal, ScrollView } from "react-native";
-import { X, Volume2, SlidersHorizontal, Palette, Bot, Globe, Shield, Info, Crown, UserCheck, BarChart3 } from "lucide-react-native";
+import { X, Volume2, SlidersHorizontal, Palette, Bot, Globe, Shield, Info, Crown, UserCheck, BarChart3, BatteryCharging } from "lucide-react-native";
 import { GameSettings, BoardTheme, PieceTheme } from "../types/chess";
 import { soundManager } from "../services/sound";
 
@@ -128,6 +128,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     value={settings.showEvalBar}
                     onValueChange={(val) => {
                       onUpdateSettings({ showEvalBar: val });
+                    }}
+                    trackColor={{ false: "#27272A", true: "#D4AF37" }}
+                  />
+                </View>
+
+                {/* Low Power Mode On / Off */}
+                <View style={styles.toggleRow}>
+                  <View style={styles.toggleLabelRow}>
+                    <BatteryCharging size={16} color="#D4AF37" />
+                    <View style={{ gap: 2 }}>
+                      <Text style={styles.toggleText}>Low Power Mode</Text>
+                      <Text style={{ color: "#71717A", fontSize: 10 }}>
+                        Saves battery by disabling heavy move animations & limiting Stockfish depth
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={Boolean(settings.lowPowerMode)}
+                    onValueChange={(val) => {
+                      onUpdateSettings({ lowPowerMode: val });
                     }}
                     trackColor={{ false: "#27272A", true: "#D4AF37" }}
                   />

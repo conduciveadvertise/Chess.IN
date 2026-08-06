@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, SafeAreaView, StatusBar } from "react-native";
 import { Navbar } from "./components/Navbar";
 import { HomeView } from "./views/HomeView";
@@ -7,6 +7,7 @@ import { PlayPassView } from "./views/PlayPassView";
 import { PuzzleRushView } from "./views/PuzzleRushView";
 import { SettingsModal } from "./views/SettingsModal";
 import { GameSettings, PieceTheme } from "./types/chess";
+import { StockfishEngine } from "./services/engine";
 
 export default function App() {
   const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play" | "puzzle_rush">("home");
@@ -28,8 +29,13 @@ export default function App() {
       autoFlipBoard: false,
       coachEnabled: true,
       moveAnimationSpeed: "normal",
+      lowPowerMode: false,
     };
   });
+
+  useEffect(() => {
+    StockfishEngine.setLowPowerMode(settings.lowPowerMode ?? false);
+  }, [settings.lowPowerMode]);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 

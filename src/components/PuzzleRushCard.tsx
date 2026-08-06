@@ -113,7 +113,7 @@ export const PuzzleRushCard: React.FC<PuzzleRushCardProps> = ({
         <View style={styles.statBox}>
           <Clock size={13} color="#38BDF8" />
           <Text style={styles.statLabel}>Timer</Text>
-          <Text style={styles.statValue}>1:00</Text>
+          <Text style={styles.statValue}>3:00</Text>
         </View>
 
         <View style={styles.statBox}>

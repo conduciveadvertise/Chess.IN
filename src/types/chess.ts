@@ -116,6 +116,7 @@ export interface GameSettings {
   autoFlipBoard: boolean;
   coachEnabled: boolean;
   moveAnimationSpeed: "fast" | "normal" | "instant";
+  lowPowerMode?: boolean;
 }
 
 export interface DailyPuzzle {

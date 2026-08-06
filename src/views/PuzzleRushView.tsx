@@ -59,7 +59,7 @@ export const PuzzleRushView: React.FC<PuzzleRushViewProps> = ({
   const [highestStreak, setHighestStreak] = useState<number>(0);
   const [runLives, setRunLives] = useState<number>(3);
   const [mistakes, setMistakes] = useState<number>(0);
-  const [timeLeft, setTimeLeft] = useState<number>(60); // 1 minute rush
+  const [timeLeft, setTimeLeft] = useState<number>(180); // 3 minutes rush (180s)
   const [timePlayed, setTimePlayed] = useState<number>(0);
 
   // Puzzle State
@@ -115,6 +115,13 @@ export const PuzzleRushView: React.FC<PuzzleRushViewProps> = ({
 
   // Trigger smooth slide-out left and fade-in from right for next puzzle
   const transitionToNextPuzzle = (nextPuzzle: PuzzleRecord) => {
+    if (settings?.lowPowerMode) {
+      slideAnim.setValue(0);
+      opacityAnim.setValue(1);
+      loadPuzzle(nextPuzzle);
+      return;
+    }
+
     // 1. Slide out to left (-60px) and fade out (120ms)
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -207,7 +214,7 @@ export const PuzzleRushView: React.FC<PuzzleRushViewProps> = ({
     setHighestStreak(0);
     setRunLives(3);
     setMistakes(0);
-    setTimeLeft(60);
+    setTimeLeft(180);
     setTimePlayed(0);
     setRunSummary(null);
 
@@ -564,7 +571,7 @@ export const PuzzleRushView: React.FC<PuzzleRushViewProps> = ({
               <View style={styles.statRow}>
                 <Clock size={18} color="#38BDF8" />
                 <Text style={styles.statRowLabel}>Timer</Text>
-                <Text style={styles.statRowValue}>1:00</Text>
+                <Text style={styles.statRowValue}>3:00</Text>
               </View>
             </View>
 
@@ -951,7 +958,8 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 120,
   },
   startDashboard: {
     gap: 16,

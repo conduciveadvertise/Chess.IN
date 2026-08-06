@@ -216,9 +216,8 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 24,
-    paddingBottom: 24,
+    paddingBottom: 120,
     flexGrow: 1,
-    justifyContent: "center",
   },
   brandHeader: {
     flexDirection: "row",
