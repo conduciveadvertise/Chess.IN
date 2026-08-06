@@ -153,6 +153,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
                 </View>
 
+                {/* Timer Configuration Mode */}
+                <Text style={styles.sectionLabel}>TIMER MODE</Text>
+                <View style={styles.themeGrid}>
+                  {[
+                    { id: "blitz", name: "Blitz (3m)" },
+                    { id: "rapid", name: "Rapid (10m)" },
+                    { id: "unlimited", name: "Unlimited" },
+                  ].map((tc) => {
+                    const active = (settings.defaultTimeControl || "rapid") === tc.id;
+                    return (
+                      <Pressable
+                        key={tc.id}
+                        onPress={() => onUpdateSettings({ defaultTimeControl: tc.id as any })}
+                        style={[styles.themeChip, active && styles.activeThemeChip]}
+                      >
+                        <Text style={[styles.themeText, active && styles.activeThemeText]}>
+                          {tc.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
                 {/* Sound Pack Selector */}
                 {settings.soundEnabled && (
                   <>

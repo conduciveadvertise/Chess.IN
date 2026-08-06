@@ -1,5 +1,6 @@
 import offlinePuzzlesData from "../data/puzzles.json";
 import { PuzzleRecord } from "../types/learning";
+import { appStorage } from "../utils/storage";
 
 const STORAGE_KEYS = {
   BEST_SCORE: "chess_in_puzzle_rush_best_score",
@@ -40,21 +41,19 @@ export class PuzzleRushService {
     let lastRegen = now;
 
     try {
-      if (typeof localStorage !== "undefined") {
-        const storedLives = localStorage.getItem(STORAGE_KEYS.LIVES);
-        const storedLastRegen = localStorage.getItem(STORAGE_KEYS.LAST_REGEN);
+      const storedLives = appStorage.getItem(STORAGE_KEYS.LIVES);
+      const storedLastRegen = appStorage.getItem(STORAGE_KEYS.LAST_REGEN);
 
-        if (storedLives !== null) {
-          lives = parseInt(storedLives, 10);
-          if (isNaN(lives)) lives = MAX_LIVES;
-        }
+      if (storedLives !== null) {
+        lives = parseInt(storedLives, 10);
+        if (isNaN(lives)) lives = MAX_LIVES;
+      }
 
-        if (storedLastRegen !== null) {
-          lastRegen = parseInt(storedLastRegen, 10);
-          if (isNaN(lastRegen)) lastRegen = now;
-        } else {
-          lastRegen = now;
-        }
+      if (storedLastRegen !== null) {
+        lastRegen = parseInt(storedLastRegen, 10);
+        if (isNaN(lastRegen)) lastRegen = now;
+      } else {
+        lastRegen = now;
       }
     } catch (e) {
       console.error("Storage read error", e);
@@ -116,11 +115,9 @@ export class PuzzleRushService {
     // If we were at max lives, start the regen timer now
     let lastRegen = now;
     try {
-      if (typeof localStorage !== "undefined") {
-        const storedLastRegen = localStorage.getItem(STORAGE_KEYS.LAST_REGEN);
-        if (info.lives < MAX_LIVES && storedLastRegen) {
-          lastRegen = parseInt(storedLastRegen, 10) || now;
-        }
+      const storedLastRegen = appStorage.getItem(STORAGE_KEYS.LAST_REGEN);
+      if (info.lives < MAX_LIVES && storedLastRegen) {
+        lastRegen = parseInt(storedLastRegen, 10) || now;
       }
     } catch (e) {}
 
@@ -133,10 +130,8 @@ export class PuzzleRushService {
    */
   private static saveLives(lives: number, lastRegen: number) {
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(STORAGE_KEYS.LIVES, String(lives));
-        localStorage.setItem(STORAGE_KEYS.LAST_REGEN, String(lastRegen));
-      }
+      appStorage.setItem(STORAGE_KEYS.LIVES, String(lives));
+      appStorage.setItem(STORAGE_KEYS.LAST_REGEN, String(lastRegen));
     } catch (e) {
       console.error("Storage write error", e);
     }
@@ -152,12 +147,10 @@ export class PuzzleRushService {
     let totalPlayed = 0;
 
     try {
-      if (typeof localStorage !== "undefined") {
-        bestScore = parseInt(localStorage.getItem(STORAGE_KEYS.BEST_SCORE) || "0", 10);
-        bestStreak = parseInt(localStorage.getItem(STORAGE_KEYS.BEST_STREAK) || "0", 10);
-        totalSolved = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_SOLVED) || "0", 10);
-        totalPlayed = parseInt(localStorage.getItem(STORAGE_KEYS.TOTAL_PLAYED) || "0", 10);
-      }
+      bestScore = parseInt(appStorage.getItem(STORAGE_KEYS.BEST_SCORE) || "0", 10);
+      bestStreak = parseInt(appStorage.getItem(STORAGE_KEYS.BEST_STREAK) || "0", 10);
+      totalSolved = parseInt(appStorage.getItem(STORAGE_KEYS.TOTAL_SOLVED) || "0", 10);
+      totalPlayed = parseInt(appStorage.getItem(STORAGE_KEYS.TOTAL_PLAYED) || "0", 10);
     } catch (e) {}
 
     return {
@@ -179,12 +172,10 @@ export class PuzzleRushService {
     const newTotalPlayed = stats.totalPlayed + 1;
 
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(STORAGE_KEYS.BEST_SCORE, String(newBestScore));
-        localStorage.setItem(STORAGE_KEYS.BEST_STREAK, String(newBestStreak));
-        localStorage.setItem(STORAGE_KEYS.TOTAL_SOLVED, String(newTotalSolved));
-        localStorage.setItem(STORAGE_KEYS.TOTAL_PLAYED, String(newTotalPlayed));
-      }
+      appStorage.setItem(STORAGE_KEYS.BEST_SCORE, String(newBestScore));
+      appStorage.setItem(STORAGE_KEYS.BEST_STREAK, String(newBestStreak));
+      appStorage.setItem(STORAGE_KEYS.TOTAL_SOLVED, String(newTotalSolved));
+      appStorage.setItem(STORAGE_KEYS.TOTAL_PLAYED, String(newTotalPlayed));
     } catch (e) {}
 
     return {

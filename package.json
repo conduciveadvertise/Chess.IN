@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start --port 3000 --web",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "expo export",
     "lint": "tsc --noEmit"
@@ -41,12 +41,18 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
-    "@types/pngjs": "^6.0.5",
     "@types/react": "^18.3.0",
     "babel-preset-expo": "~12.0.0",
     "jsdom": "^30.0.1",
     "pngjs": "^7.0.0",
     "typescript": "^5.3.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["chess.js", "dotenv", "expo-av"]
+      }
+    }
+  }
 }

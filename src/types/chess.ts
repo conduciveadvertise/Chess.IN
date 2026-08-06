@@ -105,6 +105,7 @@ export interface SavedGameRecord {
 }
 
 export type SoundPack = "classic" | "modern" | "metallic";
+export type DefaultTimeControlMode = "blitz" | "rapid" | "unlimited";
 
 export interface GameSettings {
   boardTheme: BoardTheme;
@@ -117,6 +118,7 @@ export interface GameSettings {
   coachEnabled: boolean;
   moveAnimationSpeed: "fast" | "normal" | "instant";
   lowPowerMode?: boolean;
+  defaultTimeControl?: DefaultTimeControlMode;
 }
 
 export interface DailyPuzzle {

@@ -8,15 +8,22 @@ import { PuzzleRushView } from "./views/PuzzleRushView";
 import { SettingsModal } from "./views/SettingsModal";
 import { GameSettings, PieceTheme } from "./types/chess";
 import { StockfishEngine } from "./services/engine";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { appStorage } from "./utils/storage";
 
 export default function App() {
   const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play" | "puzzle_rush">("home");
   const [selectedAiLevel, setSelectedAiLevel] = useState<number>(1);
 
-const [settings, setSettings] = useState<GameSettings>(() => {
-  const savedTheme: PieceTheme = "neo_staunton";
-
+  const [settings, setSettings] = useState<GameSettings>(() => {
+    let savedTheme: PieceTheme = "neo_staunton";
+    let savedTimeControl: any = "rapid";
+    try {
+      const stored = appStorage.getItem("chess_in_piece_theme") as PieceTheme;
+      if (stored) savedTheme = stored;
+      const storedTc = appStorage.getItem("chess_in_default_time_control");
+      if (storedTc) savedTimeControl = storedTc;
+    } catch (e) {}
     return {
       boardTheme: "slate",
       pieceTheme: savedTheme,
@@ -28,6 +35,7 @@ const [settings, setSettings] = useState<GameSettings>(() => {
       coachEnabled: true,
       moveAnimationSpeed: "normal",
       lowPowerMode: false,
+      defaultTimeControl: savedTimeControl,
     };
   });
 
@@ -42,7 +50,12 @@ const [settings, setSettings] = useState<GameSettings>(() => {
       const updated = { ...prev, ...newSettings };
       if (newSettings.pieceTheme) {
         try {
-         //localStorage.setItem("chess_in_piece_theme", newSettings.pieceTheme);
+          appStorage.setItem("chess_in_piece_theme", newSettings.pieceTheme);
+        } catch (e) {}
+      }
+      if (newSettings.defaultTimeControl) {
+        try {
+          appStorage.setItem("chess_in_default_time_control", newSettings.defaultTimeControl);
         } catch (e) {}
       }
       return updated;

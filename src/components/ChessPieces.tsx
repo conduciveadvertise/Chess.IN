@@ -21,9 +21,12 @@ export const ChessPiece: React.FC<ChessPieceProps> = ({
   const themeDict = PIECE_THEMES[theme] || PIECE_THEMES["neo_staunton"];
   const xml = themeDict ? themeDict[pieceKey] : undefined;
 
+  // Black pawns face downward toward White
+  const isBlackPawn = color === "b" && type === "p";
+
   if (xml) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, isBlackPawn && styles.rotated]}>
         <SvgXml xml={xml} width={size} height={size} />
       </View>
     );
@@ -36,5 +39,8 @@ const styles = StyleSheet.create({
   center: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  rotated: {
+    transform: [{ rotate: "180deg" }],
   },
 });

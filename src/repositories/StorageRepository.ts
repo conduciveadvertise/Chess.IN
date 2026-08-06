@@ -4,14 +4,15 @@ export class StorageRepository {
   /**
    * Upload an avatar file to Supabase storage bucket `avatars`
    */
-  async uploadAvatar(userId: string, file: File): Promise<string> {
+  async uploadAvatar(userId: string, file: any): Promise<string> {
     if (!isSupabaseConfigured) {
-      // Return blob URL for offline mode
-      return URL.createObjectURL(file);
+      // Return local URI if available or fallback
+      return file?.uri || "";
     }
 
     try {
-      const fileExt = file.name.split(".").pop();
+      const fileName = file?.name || "avatar.png";
+      const fileExt = fileName.split(".").pop();
       const filePath = `${userId}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -26,8 +27,8 @@ export class StorageRepository {
       return data.publicUrl;
     } catch (err: any) {
       console.error("Avatar upload failed:", err);
-      // Fallback to local object URL on error
-      return URL.createObjectURL(file);
+      // Fallback to local file URI on error
+      return file?.uri || "";
     }
   }
 }

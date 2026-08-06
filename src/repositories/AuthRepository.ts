@@ -78,7 +78,7 @@ export class AuthRepository {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: "chessin://auth-callback",
       },
     });
     if (error) throw error;
@@ -119,7 +119,7 @@ export class AuthRepository {
       throw new Error("Supabase is not configured.");
     }
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: "chessin://reset-password",
     });
     if (error) throw error;
     return data;

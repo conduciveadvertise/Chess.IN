@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Image,
   View,
   Text,
   Pressable,
@@ -47,12 +46,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         <View style={styles.headerContainer}>
           {/* Brand Logo */}
           <Pressable onPress={() => handleNavClick("home")} style={styles.brandRow}>
-          <View style={styles.logoBadge}>
-        <Image
-          source={require("../../assets/logo.png")}
-           style={{ width: 40, height: 40, resizeMode: "contain" }}
-            />
-           </View>
+            <View style={styles.logoBadge}>
+              <Crown size={16} color="#000" />
+            </View>
             <View style={styles.brandTitleRow}>
               <Text style={styles.brandText}>CHESS.IN</Text>
             </View>
@@ -188,12 +184,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-}, 
- logoBadge: {
-  padding: 0,
-  backgroundColor: "transparent",
-  shadowOpacity: 0,
-},
+  },
+  logoBadge: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: "#D4AF37",
+    shadowColor: "#D4AF37",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
   brandTitleRow: {
     flexDirection: "row",
     alignItems: "center",

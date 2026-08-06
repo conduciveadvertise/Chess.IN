@@ -23,6 +23,8 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 
+import { appStorage } from "../utils/storage";
+
 interface DailyPuzzleCardProps {
   settings: GameSettings;
   onOpenFullPuzzles?: () => void;
@@ -82,9 +84,7 @@ export const DailyPuzzleCard: React.FC<DailyPuzzleCardProps> = ({
         // Check if already completed today
         let savedStatus = null;
         try {
-          if (typeof localStorage !== "undefined") {
-            savedStatus = localStorage.getItem(`${PUZZLE_STORAGE_KEY_PREFIX}${todayKey}`);
-          }
+          savedStatus = appStorage.getItem(`${PUZZLE_STORAGE_KEY_PREFIX}${todayKey}`);
         } catch (e) {}
 
         if (savedStatus === "solved") {
@@ -98,14 +98,10 @@ export const DailyPuzzleCard: React.FC<DailyPuzzleCardProps> = ({
 
         // Load streak count
         try {
-          if (typeof localStorage !== "undefined") {
-            const savedStreak = localStorage.getItem("chess_in_puzzle_streak");
-            if (savedStreak) {
-              const parsed = parseInt(savedStreak, 10);
-              if (!isNaN(parsed)) setStreak(parsed);
-            } else {
-              setStreak(1);
-            }
+          const savedStreak = appStorage.getItem("chess_in_puzzle_streak");
+          if (savedStreak) {
+            const parsed = parseInt(savedStreak, 10);
+            if (!isNaN(parsed)) setStreak(parsed);
           } else {
             setStreak(1);
           }
@@ -161,12 +157,10 @@ export const DailyPuzzleCard: React.FC<DailyPuzzleCardProps> = ({
 
           // Persist progress to local storage
           try {
-            if (typeof localStorage !== "undefined") {
-              localStorage.setItem(`${PUZZLE_STORAGE_KEY_PREFIX}${todayKey}`, "solved");
-              const newStreak = streak + 1;
-              setStreak(newStreak);
-              localStorage.setItem("chess_in_puzzle_streak", String(newStreak));
-            }
+            appStorage.setItem(`${PUZZLE_STORAGE_KEY_PREFIX}${todayKey}`, "solved");
+            const newStreak = streak + 1;
+            setStreak(newStreak);
+            appStorage.setItem("chess_in_puzzle_streak", String(newStreak));
           } catch (e) {}
         } else {
           // Play opponent response automatically if available

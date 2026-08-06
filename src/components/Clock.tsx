@@ -65,6 +65,7 @@ export const Clock: React.FC<ClockProps> = ({
     "Player";
 
   const formatTime = (totalSeconds: number) => {
+    if (initialTime <= 0) return "∞";
     const mins = Math.floor(Math.max(0, totalSeconds) / 60);
     const secs = Math.floor(Math.max(0, totalSeconds) % 60);
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;

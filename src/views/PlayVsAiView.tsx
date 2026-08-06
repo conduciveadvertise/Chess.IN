@@ -24,6 +24,8 @@ import {
   Trophy,
 } from "lucide-react-native";
 
+import { appStorage } from "../utils/storage";
+
 interface PlayVsAiViewProps {
   initialLevel?: number;
   settings: GameSettings;
@@ -54,9 +56,23 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
     flipBoard,
   } = useGameStore();
 
+  const getTimeSecFromSettings = (tcMode?: string) => {
+    if (tcMode === "blitz") return 180;
+    if (tcMode === "unlimited") return 0;
+    return 600;
+  };
+
   const [selectedLevel, setSelectedLevel] = useState<number>(initialLevel);
   const [selectedColor, setSelectedColor] = useState<"w" | "b">("w");
-  const [selectedTimeSec, setSelectedTimeSec] = useState<number>(600);
+  const [selectedTimeSec, setSelectedTimeSec] = useState<number>(() =>
+    getTimeSecFromSettings(settings.defaultTimeControl)
+  );
+
+  useEffect(() => {
+    if (settings.defaultTimeControl) {
+      setSelectedTimeSec(getTimeSecFromSettings(settings.defaultTimeControl));
+    }
+  }, [settings.defaultTimeControl]);
   const [isGameStarted, setIsGameStarted] = useState<boolean>(true);
   const [showNewGameModal, setShowNewGameModal] = useState<boolean>(false);
 
@@ -73,9 +89,9 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
     if (isGameOver && winner === playerColor) {
       try {
         const nextLevel = Math.min(20, aiLevel + 1);
-        const currentMax = parseInt(localStorage.getItem("chess_in_max_unlocked_level") || "1", 10);
+        const currentMax = parseInt(appStorage.getItem("chess_in_max_unlocked_level") || "1", 10);
         if (nextLevel > currentMax) {
-          localStorage.setItem("chess_in_max_unlocked_level", String(nextLevel));
+          appStorage.setItem("chess_in_max_unlocked_level", String(nextLevel));
         }
       } catch (e) {
         // ignore storage error
@@ -194,9 +210,9 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
             <Text style={styles.label}>TIME CONTROL</Text>
             <View style={styles.chipRow}>
               {[
-                { label: "3m", val: 180 },
-                { label: "5m", val: 300 },
-                { label: "10m", val: 600 },
+                { label: "Blitz (3m)", val: 180 },
+                { label: "Rapid (10m)", val: 600 },
+                { label: "Unlimited", val: 0 },
               ].map((tc) => (
                 <Pressable
                   key={tc.val}
