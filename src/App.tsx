@@ -8,16 +8,16 @@ import { PuzzleRushView } from "./views/PuzzleRushView";
 import { SettingsModal } from "./views/SettingsModal";
 import { GameSettings, PieceTheme } from "./types/chess";
 import { StockfishEngine } from "./services/engine";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function App() {
   const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play" | "puzzle_rush">("home");
   const [selectedAiLevel, setSelectedAiLevel] = useState<number>(1);
 
-  const [settings, setSettings] = useState<GameSettings>(() => {
-    let savedTheme: PieceTheme = "neo_staunton";
+  const stored = null;
+// Abhi testing ke liye localStorage ko disable kar do.
     try {
-      const stored = localStorage.getItem("chess_in_piece_theme") as PieceTheme;
-      if (stored) savedTheme = stored;
+      // localStorage.setItem(...) ko comment kar do
     } catch (e) {}
     return {
       boardTheme: "slate",
