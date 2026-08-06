@@ -4,11 +4,12 @@ import { Navbar } from "./components/Navbar";
 import { HomeView } from "./views/HomeView";
 import { PlayVsAiView } from "./views/PlayVsAiView";
 import { PlayPassView } from "./views/PlayPassView";
+import { PuzzleRushView } from "./views/PuzzleRushView";
 import { SettingsModal } from "./views/SettingsModal";
 import { GameSettings, PieceTheme } from "./types/chess";
 
 export default function App() {
-  const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play">("home");
+  const [currentMode, setCurrentMode] = useState<"home" | "vs_ai" | "pass_and_play" | "puzzle_rush">("home");
   const [selectedAiLevel, setSelectedAiLevel] = useState<number>(1);
 
   const [settings, setSettings] = useState<GameSettings>(() => {
@@ -21,6 +22,7 @@ export default function App() {
       boardTheme: "slate",
       pieceTheme: savedTheme,
       soundEnabled: true,
+      soundPack: "classic",
       highlightLegalMoves: true,
       showEvalBar: true,
       autoFlipBoard: false,
@@ -47,7 +49,7 @@ export default function App() {
     if (level !== undefined) {
       setSelectedAiLevel(level);
     }
-    if (mode === "vs_ai" || mode === "pass_and_play" || mode === "home") {
+    if (["vs_ai", "pass_and_play", "home", "puzzle_rush"].includes(mode)) {
       setCurrentMode(mode as any);
     }
   };
@@ -67,6 +69,7 @@ export default function App() {
       <View style={styles.main}>
         {currentMode === "home" && (
           <HomeView
+            settings={settings}
             onSelectMode={handleSelectMode}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
@@ -85,6 +88,14 @@ export default function App() {
           <PlayPassView
             settings={settings}
             onBackToHome={() => setCurrentMode("home")}
+          />
+        )}
+
+        {currentMode === "puzzle_rush" && (
+          <PuzzleRushView
+            settings={settings}
+            onBackToHome={() => setCurrentMode("home")}
+            onOpenSettings={() => setIsSettingsOpen(true)}
           />
         )}
       </View>

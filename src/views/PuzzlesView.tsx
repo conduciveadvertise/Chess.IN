@@ -35,6 +35,7 @@ export const PuzzlesView: React.FC<PuzzlesViewProps> = ({
   const [dailyPuzzle, setDailyPuzzle] = useState<PuzzleRecord | null>(null);
   const [chess] = useState<Chess>(() => new Chess());
   const [fen, setFen] = useState<string>("");
+  const [moveIndex, setMoveIndex] = useState<number>(0);
   const [solved, setSolved] = useState<boolean>(false);
   const [failed, setFailed] = useState<boolean>(false);
   const [showHint, setShowHint] = useState<boolean>(false);
@@ -49,6 +50,9 @@ export const PuzzlesView: React.FC<PuzzlesViewProps> = ({
       setDailyPuzzle(p);
       chess.load(p.fen);
       setFen(chess.fen());
+      setMoveIndex(0);
+      setSolved(false);
+      setFailed(false);
     });
   }, [chess]);
 
@@ -58,38 +62,77 @@ export const PuzzlesView: React.FC<PuzzlesViewProps> = ({
       if (list.length > 0) {
         chess.load(list[0].fen);
         setFen(chess.fen());
+        setMoveIndex(0);
         setSolved(false);
+        setFailed(false);
       }
     });
   }, [selectedTheme, chess]);
 
   const handleMove = (from: string, to: string, promotion?: string) => {
-    try {
-      const moveObj = chess.move({ from, to, promotion: promotion || "q" });
-      if (moveObj) {
-        setFen(chess.fen());
+    if (solved) return;
 
-        if (activeTab === "daily" && dailyPuzzle) {
-          const expected = dailyPuzzle.moves[0];
-          if (moveObj.san === expected || moveObj.from + moveObj.to === expected) {
-            soundManager.playVictory();
-            setSolved(true);
-            setDailyStreak((s) => s + 1);
-            setPuzzleRating((r) => r + 15);
-            if (onSolvePuzzle) onSolvePuzzle();
-          } else {
-            soundManager.playDefeat();
-            setFailed(true);
-            setTimeout(() => {
-              chess.load(dailyPuzzle.fen);
-              setFen(chess.fen());
-              setFailed(false);
-            }, 1000);
-          }
-        } else {
+    const currentPuzzle = activeTab === "daily" ? dailyPuzzle : themePuzzles[0];
+    if (!currentPuzzle) return;
+
+    try {
+      const currentExpectedMove = currentPuzzle.moves[moveIndex];
+      const moveObj = chess.move({ from, to, promotion: promotion || "q" });
+      if (!moveObj) return;
+
+      const userSan = moveObj.san;
+      const userUci = moveObj.from + moveObj.to + (moveObj.promotion || "");
+
+      const isCorrect =
+        userUci === currentExpectedMove ||
+        userSan === currentExpectedMove ||
+        userUci.startsWith(currentExpectedMove) ||
+        userSan.toLowerCase() === currentExpectedMove.toLowerCase();
+
+      if (isCorrect) {
+        setFen(chess.fen());
+        setShowHint(false);
+        const nextIndex = moveIndex + 1;
+
+        if (nextIndex >= currentPuzzle.moves.length) {
           soundManager.playVictory();
           setSolved(true);
+          setFailed(false);
+          if (activeTab === "daily") {
+            setDailyStreak((s) => s + 1);
+            setPuzzleRating((r) => r + 15);
+          }
+          if (onSolvePuzzle) onSolvePuzzle();
+        } else {
+          soundManager.playMove();
+          setMoveIndex(nextIndex);
+
+          // Auto-play opponent reply
+          const opponentMove = currentPuzzle.moves[nextIndex];
+          setTimeout(() => {
+            if (chess && !chess.isGameOver()) {
+              try {
+                let opRes = null;
+                if (opponentMove.length >= 4) {
+                  const oFrom = opponentMove.substring(0, 2);
+                  const oTo = opponentMove.substring(2, 4);
+                  const oProm = opponentMove.substring(4, 5);
+                  opRes = chess.move({ from: oFrom, to: oTo, promotion: oProm || "q" });
+                }
+                if (!opRes) chess.move(opponentMove);
+                setFen(chess.fen());
+                soundManager.playMove();
+                setMoveIndex(nextIndex + 1);
+              } catch (e) {}
+            }
+          }, 500);
         }
+      } else {
+        soundManager.playDefeat();
+        chess.undo();
+        setFen(chess.fen());
+        setFailed(true);
+        setTimeout(() => setFailed(false), 1200);
       }
     } catch (e) {
       console.log("Invalid move", e);
@@ -97,11 +140,14 @@ export const PuzzlesView: React.FC<PuzzlesViewProps> = ({
   };
 
   const handleRetry = () => {
-    if (activeTab === "daily" && dailyPuzzle) {
-      chess.load(dailyPuzzle.fen);
+    const currentPuzzle = activeTab === "daily" ? dailyPuzzle : themePuzzles[0];
+    if (currentPuzzle) {
+      chess.load(currentPuzzle.fen);
       setFen(chess.fen());
+      setMoveIndex(0);
       setSolved(false);
       setFailed(false);
+      setShowHint(false);
     }
   };
 
@@ -151,6 +197,7 @@ export const PuzzlesView: React.FC<PuzzlesViewProps> = ({
               highlightLegalMoves={settings.highlightLegalMoves}
               onMove={handleMove}
               disabled={solved}
+              isCardView={true}
             />
           </View>
 
@@ -224,6 +271,7 @@ export const PuzzlesView: React.FC<PuzzlesViewProps> = ({
               highlightLegalMoves={settings.highlightLegalMoves}
               onMove={handleMove}
               disabled={solved}
+              isCardView={true}
             />
           </View>
 

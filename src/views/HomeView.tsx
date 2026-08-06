@@ -6,6 +6,8 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
+import { PuzzleRushCard } from "../components/PuzzleRushCard";
+import { GameSettings } from "../types/chess";
 import {
   Bot,
   Users,
@@ -46,11 +48,13 @@ export const BOT_LEVELS: BotLevelConfig[] = [
 ];
 
 interface HomeViewProps {
+  settings: GameSettings;
   onSelectMode: (mode: string, level?: number) => void;
   onOpenSettings?: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
+  settings,
   onSelectMode,
   onOpenSettings,
 }) => {
@@ -194,6 +198,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </View>
         <ChevronRight size={20} color="rgba(255,255,255,0.4)" />
       </Pressable>
+
+      {/* Puzzle Rush Section */}
+      <PuzzleRushCard
+        settings={settings}
+        onStartRush={() => onSelectMode("puzzle_rush")}
+      />
     </ScrollView>
   );
 };

@@ -21,6 +21,8 @@ interface ChessBoardProps {
   disabled?: boolean;
   lastMove?: { from: string; to: string } | null;
   fen?: string;
+  maxBoardWidth?: number;
+  isCardView?: boolean;
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -32,16 +34,26 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   onMove,
   disabled = false,
   lastMove = null,
+  maxBoardWidth,
+  isCardView = false,
 }) => {
   const { width: windowWidth } = useWindowDimensions();
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<Square[]>([]);
   const [promotionMove, setPromotionMove] = useState<{ from: Square; to: Square } | null>(null);
 
-  // Dynamic full-screen width calculation with minimal side margins (~8px on each side)
-  const maxAvailableWidth = Math.min(windowWidth - 16, 560);
-  const squareSize = Math.floor(maxAvailableWidth / 8);
+  // Dynamic width calculation considering container padding (card vs full screen)
+  // Card views (e.g. Daily Puzzle) need ~84px inset for screen margins (32px) + card padding (32px) + wood border (20px)
+  // Standard views need ~48px inset for screen margins + wood border
+  const defaultInset = isCardView ? 84 : 48;
+  const targetWidth = maxBoardWidth
+    ? Math.min(windowWidth - defaultInset, maxBoardWidth)
+    : windowWidth - defaultInset;
+
+  const maxAllowedWidth = Math.min(targetWidth, 540);
+  const squareSize = Math.max(26, Math.floor(maxAllowedWidth / 8));
   const boardSize = squareSize * 8;
+  const tableWidth = boardSize + 20;
 
   const getThemeColors = () => {
     switch (boardTheme) {
@@ -161,7 +173,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   };
 
   return (
-    <View style={[styles.floatingTable, { width: boardSize + 16 }]}>
+    <View style={[styles.floatingTable, { width: tableWidth }]}>
       {/* Dark Walnut Wood / Luxury Marble Outer Floating Frame */}
       <View style={styles.woodBorderMat}>
         <View

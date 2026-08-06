@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Switch, StyleSheet, Modal, ScrollView } from "react-native";
-import { X, Volume2, SlidersHorizontal, Palette, Bot, Globe, Shield, Info, Crown, UserCheck } from "lucide-react-native";
+import { X, Volume2, SlidersHorizontal, Palette, Bot, Globe, Shield, Info, Crown, UserCheck, BarChart3 } from "lucide-react-native";
 import { GameSettings, BoardTheme, PieceTheme } from "../types/chess";
 import { soundManager } from "../services/sound";
 
@@ -19,6 +19,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [selectedLanguage, setSelectedLanguage] = useState<string>("English");
   const [playSide, setPlaySide] = useState<"w" | "b" | "random">("w");
   const [difficultyLevel, setDifficultyLevel] = useState<number>(10);
+
+  const soundPacks: Array<{ id: "classic" | "modern" | "metallic"; name: string }> = [
+    { id: "classic", name: "Classic" },
+    { id: "modern", name: "Modern" },
+    { id: "metallic", name: "Metallic" },
+  ];
 
   const boardThemes: Array<{ id: BoardTheme; name: string }> = [
     { id: "slate", name: "Slate" },
@@ -111,6 +117,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     trackColor={{ false: "#27272A", true: "#D4AF37" }}
                   />
                 </View>
+
+                {/* Show Evaluation Bar On / Off */}
+                <View style={styles.toggleRow}>
+                  <View style={styles.toggleLabelRow}>
+                    <BarChart3 size={16} color="#D4AF37" />
+                    <Text style={styles.toggleText}>Show Evaluation Bar</Text>
+                  </View>
+                  <Switch
+                    value={settings.showEvalBar}
+                    onValueChange={(val) => {
+                      onUpdateSettings({ showEvalBar: val });
+                    }}
+                    trackColor={{ false: "#27272A", true: "#D4AF37" }}
+                  />
+                </View>
+
+                {/* Sound Pack Selector */}
+                {settings.soundEnabled && (
+                  <>
+                    <Text style={styles.sectionLabel}>SOUND PACK</Text>
+                    <View style={styles.themeGrid}>
+                      {soundPacks.map((pack) => {
+                        const active = (settings.soundPack || "classic") === pack.id;
+                        return (
+                          <Pressable
+                            key={pack.id}
+                            onPress={() => {
+                              soundManager.soundPack = pack.id;
+                              onUpdateSettings({ soundPack: pack.id });
+                              soundManager.playMove();
+                            }}
+                            style={[styles.themeChip, active && styles.activeThemeChip]}
+                          >
+                            <Text style={[styles.themeText, active && styles.activeThemeText]}>
+                              {pack.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
 
                 {/* Board Theme */}
                 <Text style={styles.sectionLabel}>BOARD THEME</Text>

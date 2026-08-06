@@ -23,6 +23,22 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ settings, onBackToHo
   const [evalScore, setEvalScore] = useState<number>(0.0);
   const [orientation, setOrientation] = useState<"w" | "b">("w");
 
+  const updatePositionEval = async (c: Chess) => {
+    // Immediate static PST/material score for instant UI response
+    const staticScore = StockfishEngine.evaluatePosition(c);
+    setEvalScore(staticScore);
+
+    // Deep async calculation using bundled Stockfish WebWorker
+    try {
+      const res = await StockfishEngine.getBestMoveAsync(c, 10);
+      if (res && typeof res.evalAfter === "number") {
+        setEvalScore(res.evalAfter);
+      }
+    } catch (e) {
+      // Fallback to static score
+    }
+  };
+
   const handleMove = (from: string, to: string, promotion?: string) => {
     try {
       const moveObj = chess.move({ from, to, promotion: promotion || "q" });
@@ -32,7 +48,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ settings, onBackToHo
         setFenInput(newFen);
         setHistory(chess.history());
         setLastMove({ from: moveObj.from, to: moveObj.to });
-        setEvalScore(StockfishEngine.evaluatePosition(chess));
+        updatePositionEval(chess);
       }
     } catch (e) {
       console.log("Invalid move", e);
@@ -45,7 +61,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ settings, onBackToHo
       setFen(chess.fen());
       setHistory([]);
       setLastMove(null);
-      setEvalScore(StockfishEngine.evaluatePosition(chess));
+      updatePositionEval(chess);
     } catch (e) {
       // invalid fen
     }
@@ -58,7 +74,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ settings, onBackToHo
     setFenInput(startFen);
     setHistory([]);
     setLastMove(null);
-    setEvalScore(0.0);
+    updatePositionEval(chess);
   };
 
   return (
@@ -76,11 +92,6 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ settings, onBackToHo
       </View>
 
       <View style={styles.boardWrap}>
-        {settings.showEvalBar && (
-          <View style={{ height: 320 }}>
-            <EvalBar score={evalScore} orientation={orientation} />
-          </View>
-        )}
         <ChessBoard
           chess={chess}
           boardTheme={settings.boardTheme}
@@ -90,6 +101,11 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ settings, onBackToHo
           onMove={handleMove}
           lastMove={lastMove}
         />
+        {settings.showEvalBar && (
+          <View style={{ height: 320 }}>
+            <EvalBar score={evalScore} orientation={orientation} />
+          </View>
+        )}
       </View>
 
       {/* FEN Control Form */}

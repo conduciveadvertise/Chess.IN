@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Info,
   Users,
+  Zap,
 } from "lucide-react-native";
 
 interface NavbarProps {
@@ -81,14 +82,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             onPress={() => setIsPlayMenuOpen(!isPlayMenuOpen)}
             style={[
               styles.bottomTab,
-              (["vs_ai", "pass_and_play"].includes(currentMode) || isPlayMenuOpen) &&
+              (["vs_ai", "pass_and_play", "puzzle_rush"].includes(currentMode) || isPlayMenuOpen) &&
                 styles.activeBottomTab,
             ]}
           >
             <Swords
               size={18}
               color={
-                ["vs_ai", "pass_and_play"].includes(currentMode) || isPlayMenuOpen
+                ["vs_ai", "pass_and_play", "puzzle_rush"].includes(currentMode) || isPlayMenuOpen
                   ? "#D4AF37"
                   : "#A1A1AA"
               }
@@ -96,7 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Text
               style={[
                 styles.bottomTabText,
-                (["vs_ai", "pass_and_play"].includes(currentMode) || isPlayMenuOpen) &&
+                (["vs_ai", "pass_and_play", "puzzle_rush"].includes(currentMode) || isPlayMenuOpen) &&
                   styles.activeBottomText,
               ]}
             >
@@ -126,15 +127,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               </Pressable>
             </View>
 
-            <Pressable onPress={() => handleNavClick("vs_ai")} style={styles.playOptionGold}>
+            <Pressable onPress={() => handleNavClick("puzzle_rush")} style={styles.playOptionGold}>
               <View style={styles.playOptionIconBoxGreen}>
-                <Bot size={16} color="#000" />
+                <Zap size={16} color="#000" fill="#000" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.playOptionTitle}>Puzzle Rush</Text>
+                <Text style={styles.playOptionSub}>Unlimited Offline Tactical Challenges</Text>
+              </View>
+              <ChevronRight size={16} color="#D4AF37" />
+            </Pressable>
+
+            <Pressable onPress={() => handleNavClick("vs_ai")} style={styles.playOptionDark}>
+              <View style={styles.playOptionIconBoxPurple}>
+                <Bot size={16} color="#FFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.playOptionTitle}>Bot Levels (VS AI)</Text>
                 <Text style={styles.playOptionSub}>20 Stockfish Engine Levels</Text>
               </View>
-              <ChevronRight size={16} color="#D4AF37" />
+              <ChevronRight size={16} color="#A1A1AA" />
             </Pressable>
 
             <Pressable onPress={() => handleNavClick("pass_and_play")} style={styles.playOptionDark}>

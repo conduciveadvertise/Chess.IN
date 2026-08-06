@@ -104,10 +104,13 @@ export interface SavedGameRecord {
   updated_at: string;
 }
 
+export type SoundPack = "classic" | "modern" | "metallic";
+
 export interface GameSettings {
   boardTheme: BoardTheme;
   pieceTheme: PieceTheme;
   soundEnabled: boolean;
+  soundPack?: SoundPack;
   highlightLegalMoves: boolean;
   showEvalBar: boolean;
   autoFlipBoard: boolean;

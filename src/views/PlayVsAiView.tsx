@@ -242,11 +242,6 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
 
           {/* Large Centered Chessboard with Luxury Atmosphere Background */}
           <View style={styles.boardWrap}>
-            {settings.showEvalBar && (
-              <View style={styles.evalBarBox}>
-                <EvalBar score={evalScore} orientation={isFlipped ? "b" : "w"} />
-              </View>
-            )}
             <ChessBoard
               key={`board_${gameId}`}
               chess={chess}
@@ -263,6 +258,11 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
                   : null
               }
             />
+            {settings.showEvalBar && (
+              <View style={styles.evalBarBox}>
+                <EvalBar score={evalScore} orientation={isFlipped ? "b" : "w"} />
+              </View>
+            )}
           </View>
 
           {/* Player Clock */}
