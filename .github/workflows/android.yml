@@ -1,6 +1,9 @@
 name: Build Android Release APK
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -30,3 +33,4 @@ jobs:
         with:
           name: ChessIN-APK
           path: android/app/build/outputs/apk/release/app-release.apk
+
