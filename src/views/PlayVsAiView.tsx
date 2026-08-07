@@ -11,7 +11,6 @@ import { StockfishEngine } from "../services/engine";
 import { soundManager } from "../services/sound";
 import { ChessBoard } from "../components/ChessBoard";
 import { Clock } from "../components/Clock";
-import { EvalBar } from "../components/EvalBar";
 import { CapturedPieces } from "../components/CapturedPieces";
 import { MoveHistory } from "../components/MoveHistory";
 import { GameSettings } from "../types/chess";
@@ -274,11 +273,6 @@ export const PlayVsAiView: React.FC<PlayVsAiViewProps> = ({
                   : null
               }
             />
-            {settings.showEvalBar && (
-              <View style={styles.evalBarBox}>
-                <EvalBar score={evalScore} orientation={isFlipped ? "b" : "w"} />
-              </View>
-            )}
           </View>
 
           {/* Player Clock */}
